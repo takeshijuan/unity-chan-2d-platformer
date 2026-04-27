@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: ""
+last_updated: "2026-04-27"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -43,7 +43,17 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: current_class
+    status: active
+    owner_system: class-switch-system
+    adr: docs/architecture/adr-0001-class-switch-architecture.md
+    interface: "ClassStateMachine.CurrentClass (read-only ClassDefinition property) + ClassStateMachine.ClassChanged event (Action<ClassDefinition>) + UnityEvent<ClassDefinition> inspector hook"
+    write_access: class-switch-system-only
+    referenced_by:
+      - docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+    revised: ""
 
 # Example:
 #
@@ -71,7 +81,22 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: class_switch_notification
+    status: active
+    pattern: csharp_event
+    producer: class-switch-system
+    consumers:
+      - hud
+      - ability-executor
+      - vfx-system-future
+      - audio-system-future
+    adr: docs/architecture/adr-0001-class-switch-architecture.md
+    signal_signature: "ClassChanged(ClassDefinition newClass) — C# event Action<ClassDefinition>; also exposed as UnityEvent<ClassDefinition> for inspector-driven hooks"
+    referenced_by:
+      - docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+    revised: ""
 
 # Example:
 #
@@ -100,7 +125,21 @@ interfaces: []
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - system: class-switch-system
+    status: active
+    budget_ms: 0.8
+    adr: docs/architecture/adr-0001-class-switch-architecture.md
+    notes: |
+      Internal breakdown: SpriteLibrary swap 0.3ms + state mutation/color assign 0.05ms +
+      AudioSource.PlayOneShot 0.1ms + AbilityExecutor.Configure 0.2ms +
+      event invoke 0.05ms + buffer 0.1ms.
+      Project total frame budget (60fps target, 16.6ms total) is defined in
+      .claude/docs/technical-preferences.md but not yet ADR-formalized.
+    referenced_by:
+      - docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+    revised: ""
 
 # Example:
 #
@@ -131,7 +170,17 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: class_visual_swap
+    status: active
+    api: "SpriteLibrary.spriteLibraryAsset = newSLA + SpriteResolver.ResolveSpriteToRenderer() (com.unity.2d.animation 10.x — exact API names pending Editor verification per ADR-0001 Validation Gate)"
+    not: "Animator.Play() / SetBool() / Animator parameter triggers"
+    adr: docs/architecture/adr-0001-class-switch-architecture.md
+    reason: "Animator state changes reflect on the next frame, breaking Pillar 1 `切替が、花になる` 1-frame visual sync requirement. SpriteLibrary direct asset swap + SpriteResolver explicit resolve completes within the same frame as input."
+    referenced_by:
+      - docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+    revised: ""
 
 # Example:
 #
@@ -157,7 +206,20 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: animator_play_for_class_switch
+    status: active
+    description: "職業切替の即時視覚変更を Animator.Play() / SetBool() / Animator parameter trigger で期待してはいけない。視覚切替には SpriteLibrary + SpriteResolver の同フレーム経路を使うこと。"
+    why: "Animator state mutations are reflected at the next frame transition, introducing a 1-frame visual lag. Pillar 1 `切替が、花になる` design test explicitly rejects any switching cost or delay."
+    adr: docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+
+  - pattern: component_swap_per_class
+    status: active
+    description: "職業ごとに別の MonoBehaviour Controller (`SwordsmanController` / `ArcherController` etc.) を作って enable/disable で切替えてはいけない。ClassDefinition (ScriptableObject) + ClassStateMachine + AbilityExecutor の三分割を使うこと。"
+    why: "Per-class MonoBehaviour Controllers tend to absorb ability + combat + movement + VFX trigger responsibility, becoming God Objects. This violates systems-index.md Architecture Note A1 (Class Abilities God Object prevention) and makes 4-class extension a linear-or-worse code duplication problem."
+    adr: docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
 
 # Example:
 #
