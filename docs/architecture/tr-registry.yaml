@@ -27,226 +27,243 @@
 version: 2
 last_updated: "2026-04-27"
 
+# Registered: 25 MVP-tier requirements from /architecture-review 2026-04-27
+# Source GDDs: design/gdd/game-concept.md, design/gdd/systems-index.md
+# VS / Polish / Cross-cutting requirements (14 additional entries identified
+# during review) will be appended when corresponding GDDs are authored.
+
 requirements:
-  # --- Pillar-derived requirements (game-concept.md) ---
-  - id: TR-pillar-001
-    system: pillar
+  # ── Input System (MVP, Foundation) ──
+  - id: TR-input-001
+    system: input
     gdd: design/gdd/game-concept.md
-    requirement: "Pillar 1: R1/L1 1ボタン即時切替、入力受信から視覚反映が同一フレーム内完了"
+    requirement: "Unity Input System 1.8+（Action Rebinding UI / Steam Input 対応）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-pillar-002
-    system: pillar
+  - id: TR-input-002
+    system: input
     gdd: design/gdd/game-concept.md
-    requirement: "Pillar 1 / Core Mechanic 1: 切替時の視覚（color wash）+ 聴覚（SE）報酬"
+    requirement: "Gamepad full support / Keyboard&Mouse / 全 UI は d-pad/スティックで操作可能"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-pillar-003
-    system: pillar
-    gdd: design/gdd/game-concept.md
-    requirement: "Pillar 3「歯ごたえ」: hitstop + knockback + impact frame で操作レスポンスの重量感"
+  - id: TR-input-003
+    system: input
+    gdd: design/gdd/systems-index.md
+    requirement: "コンボバッファ向け timestamp 配信"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-pillar-004
-    system: pillar
-    gdd: design/gdd/game-concept.md
-    requirement: "Pillar 4: 4職目追加がコード変更ゼロ（ScriptableObject Asset 追加と Inspector 配列のみ）"
+  # ── Save Data System (MVP minimal stub, Foundation) ──
+  - id: TR-save-003
+    system: save
+    gdd: design/gdd/systems-index.md
+    requirement: "ISaveable interface + section-based JSON 論理分割（player / world / settings / meta セクション）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  # --- Class Switch System ---
-  - id: TR-class-001
-    system: class-switch
+  - id: TR-save-004
+    system: save
     gdd: design/gdd/game-concept.md
-    requirement: "R-T3: ScriptableObject + SpriteLibrary + VFX プール化で切替コスト ~0.4ms（≤0.8ms 予算）"
+    requirement: "Newtonsoft.Json for Unity（公式）+ Steam Cloud（Steamworks.NET ISteamRemoteStorage）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  # --- CharacterController2D ---
+  - id: TR-save-005
+    system: save
+    gdd: design/gdd/systems-index.md
+    requirement: "MVP 最小スタブを前倒し（schemaVersion=1 + JSON I/O のみ。実体データは VS で拡張）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # ── CharacterController2D (MVP, Core) ──
   - id: TR-cc2d-001
     system: cc2d
     gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations / R-T1: Kinematic Rigidbody2D + 自作 CharacterController2D（Box2D v3 マルチスレッド整合）"
+    requirement: "Kinematic Rigidbody2D + 自作 Cast ベース Solver、ability から内部状態（velocity / gravity / grounded / position）への直接 write はコンパイル時に不能"
     created: 2026-04-27
     revised: ""
     status: active
 
   - id: TR-cc2d-002
-    system: combo-input
-    gdd: design/gdd/game-concept.md
-    requirement: "Core Mechanic 4: 先行入力バッファ 4-6 フレーム、空中キャンセル、職業間コンボ受け渡し"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Art Pipeline ---
-  - id: TR-art-001
-    system: art-pipeline
-    gdd: design/gdd/game-concept.md
-    requirement: "R-T1 / Visual Identity: AI生成スプライト一貫性を案C Hybrid + 統一縁取り 2-3px 後処理で吸収"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Save Data System ---
-  - id: TR-save-001
-    system: save-data
-    gdd: design/gdd/game-concept.md
-    requirement: "R-T5: schemaVersion + Newtonsoft.Json + .bak 1 世代 + Steam Cloud 同期"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Scene & Addressables ---
-  - id: TR-addr-001
-    system: scene-addressables
-    gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations: Addressables 2.0 Scene 動的ロード、AI 生成アセットのバリアント管理"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Camera System ---
-  - id: TR-cam-001
-    system: camera
-    gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations: Cinemachine 3 + 2D Confiner Extension、CinemachineCamera 新 API"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Input System ---
-  - id: TR-input-001
-    system: input
-    gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations: Input System 1.8+ / Action Rebinding UI / Steam Input 連携"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Animation ---
-  - id: TR-anim-001
-    system: animation
-    gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations: 2D Skeletal Animation 10.x + PSD Importer + Unityちゃん公式 PSB"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Rendering ---
-  - id: TR-render-001
-    system: rendering
-    gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations: URP 2D Renderer 採用（Built-in RP / Compatibility Mode 不採用）"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Engine ---
-  - id: TR-engine-001
-    system: engine
-    gdd: design/gdd/game-concept.md
-    requirement: "Technical Considerations: Unity 6.3 LTS (6000.3.x) pin の根拠"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Architecture Notes (systems-index.md) ---
-  - id: TR-arch-A1
-    system: class-abilities
-    gdd: design/gdd/systems-index.md
-    requirement: "A1: Class Abilities God Object 防止 — ClassAbilityData(SO) + IAbilityExecutor(MB) + AbilityContext(DI) 三分割"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  - id: TR-arch-A2
     system: cc2d
     gdd: design/gdd/systems-index.md
-    requirement: "A2: CC2D ↔ Class Abilities 双方向結合防止 — ICharacterMotor 意図ベース API（RequestImpulse / OverrideGravity / LockHorizontalControl / ApplyHitstop / SetFacing）のみ公開"
+    requirement: "ICharacterMotor interface のみ expose、意図ベース API（RequestImpulse / OverrideGravity / LockHorizontalControl / ApplyHitstop / SetFacing）でのみ駆動"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-arch-A3
-    system: game-state
+  - id: TR-cc2d-003
+    system: cc2d
+    gdd: design/gdd/game-concept.md
+    requirement: "Coyote Time / Jump Buffer / Wall Slide メトロイドヴァニア定番要件"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-cc2d-004
+    system: cc2d
     gdd: design/gdd/systems-index.md
-    requirement: "A3: Game State Machine（プレイヤー視点モード）と Scene & Addressables Manager（物理ロード状態）の責務直交化、Loading 状態は Game State 側に持つ"
+    requirement: "Tier 0 で Hitstop 30-50ms を motor 内蔵（Combat System 不在で Pillar 3 検証可、CD1 申し送り）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-arch-A4
-    system: vfx
+  - id: TR-cc2d-005
+    system: cc2d
+    gdd: design/gdd/game-concept.md
+    requirement: "Box2D v3 マルチスレッド整合（MovePosition 後の Physics2D.SyncTransforms() 明示呼出）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # ── Class Switch System (MVP, Core) ──
+  - id: TR-classswitch-001
+    system: classswitch
+    gdd: design/gdd/game-concept.md
+    requirement: "R1/L1 1 ボタン即時切替、クールダウン無し、戦闘中・空中・コンボ中いつでも切替可能"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-classswitch-002
+    system: classswitch
+    gdd: design/gdd/game-concept.md
+    requirement: "入力受信から SpriteRenderer.sprite 視覚反映が同一フレーム内に完了"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-classswitch-003
+    system: classswitch
+    gdd: design/gdd/game-concept.md
+    requirement: "切替時 0.1-0.2 秒の放射状グラデーション（Color Wash）が新オーブ色で広がってフェードアウト"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-classswitch-004
+    system: classswitch
+    gdd: design/gdd/game-concept.md
+    requirement: "切替自体が視覚および聴覚（SE）の報酬になる（Pillar 1「切替が、花になる」）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # ── Camera System (MVP single-scene, Core) ──
+  - id: TR-camera-001
+    system: camera
+    gdd: design/gdd/game-concept.md
+    requirement: "Cinemachine 3 + 2D Confiner Extension、CinemachineCamera 新 API"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-camera-002
+    system: camera
+    gdd: design/gdd/game-concept.md
+    requirement: "CharacterController2D に追従、ICharacterMotor.Position 経由（直接 Transform 参照しない）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # ── Combo Input Buffer (MVP, Core) ──
+  - id: TR-combo-001
+    system: combo
+    gdd: design/gdd/game-concept.md
+    requirement: "先行入力バッファ 4-6 フレーム（コンボ入力システム）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-combo-002
+    system: combo
+    gdd: design/gdd/game-concept.md
+    requirement: "空中キャンセル / 職業間コンボ受け渡し"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # ── Class Abilities System (MVP 2 jobs / VS 3 jobs / Tier 3 4 jobs, Feature) ──
+  - id: TR-abilities-001
+    system: abilities
+    gdd: design/gdd/game-concept.md
+    requirement: "剣士（近接連撃・壁破壊）/ 弓士（遠隔射撃・ギミック起動）/ 魔法使い（範囲攻撃・結界解除）の職業別アビリティ"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-abilities-002
+    system: abilities
     gdd: design/gdd/systems-index.md
-    requirement: "A4: VFX System を Core 層 pub/sub サービス（IVFXPublisher）として配置、依存ゼロ、すべての consumer から publish 可能"
+    requirement: "ClassAbilityData (ScriptableObject) + IAbilityExecutor (MonoBehaviour) + AbilityContext (DI) の三分割（God Object 化防止、A1 申し送り）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-arch-A5
-    system: save-data
+  - id: TR-abilities-003
+    system: abilities
     gdd: design/gdd/systems-index.md
-    requirement: "A5: Save Data System を ISaveable interface + section-based JSON（player / world / settings / meta）で系統内分割、System split しない"
+    requirement: "ability が CC2D の内部状態を直接書き換える設計を禁止、意図ベース API のみ叩く（A2 申し送り）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  # --- Creative Director Notes (systems-index.md) ---
-  - id: TR-cd-CD1
-    system: class-switch
-    gdd: design/gdd/systems-index.md
-    requirement: "CD1: Tier 0 self-contained minimal feedback — color wash 0.1-0.2s + 内蔵 SE + hitstop 30-50ms（Class Switch / CC2D 内包、VFX/Audio System 不在で Pillar 1 検証可能）"
+  # ── Combat System (MVP minimal, Feature) ──
+  - id: TR-combat-001
+    system: combat
+    gdd: design/gdd/game-concept.md
+    requirement: "Pillar 3「歯ごたえ」の触覚は damage number ではなく hitstop + knockback + impact frame の 3 点に集中（Tier 0）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-cd-CD2
+  - id: TR-combat-002
     system: combat
     gdd: design/gdd/systems-index.md
-    requirement: "CD2: Combat Tier 0 inline hit feedback — HP=1 dummy enemy + hitstop + knockback impulse のみ（HP/ダメージ計算は Tier 1）"
+    requirement: "Tier 0 では HP=1 の dummy enemy + hitstop + knockback impulse のみ（HP/ダメージ計算なし、敵は 1 ヒットで死亡）"
     created: 2026-04-27
     revised: ""
     status: active
 
-  - id: TR-cd-CD4
-    system: class-abilities
-    gdd: design/gdd/systems-index.md
-    requirement: "CD4: Anti-Pillar 監視 — アンロックツリー / 強化スロット提案を Class Abilities GDD で REJECT する規律"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Production Constraints (systems-index.md) ---
-  - id: TR-prod-001
-    system: localization
-    gdd: design/gdd/systems-index.md
-    requirement: "Localization Discipline: MVP day 1 から Strings.[Category].[Key] 形式キー参照のみ、コードに生文字列禁止"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  - id: TR-prod-002
-    system: save-data
-    gdd: design/gdd/systems-index.md
-    requirement: "Production Constraint Option A: Save Data 最小スタブを MVP に前倒し（schemaVersion=1 + JSON I/O のみ、実体データは VS で拡張）"
-    created: 2026-04-27
-    revised: ""
-    status: active
-
-  # --- Performance Budget (technical-preferences.md) ---
-  - id: TR-perf-001
-    system: performance
+  # ── Enemy AI System (MVP 1 dummy / VS 3-4 archetype, Feature) ──
+  - id: TR-enemyai-001
+    system: enemyai
     gdd: design/gdd/game-concept.md
-    requirement: "60fps / 16.6ms frame budget の全体配分（Update ≤4ms / Physics ≤2ms / Rendering ≤6ms / Other ≤4ms）"
+    requirement: "Tier 0 では 1 ダミー（基本挙動のみ）、Vertical Slice で 3-4 archetype に拡張"
     created: 2026-04-27
     revised: ""
     status: active
+
+# ── Future entries (NOT registered yet, 15 candidates) ──
+# These appeared in the 2026-04-27 review but were deferred per user direction
+# (MVP-only registration). They will be appended when corresponding GDDs are authored:
+#
+#   TR-save-001 (schemaVersion + migration chain)
+#   TR-save-002 (.bak 1 generation backup)
+#   TR-cc2d-006 (Determinism for replay/speedrun)
+#   TR-classswitch-005 (4 jobs added with zero code change — Tier 3)
+#   TR-classswitch-006 (Three-way split scaffolding — covered by ADR-0001 + future ADR-0004)
+#   TR-abilities-004 (Balance verification script — Tier 1)
+#   TR-combat-003 (HP / damage calculation — VS scope, Health & Damage System)
+#   TR-gamestate-001 (Title/Playing/Paused/GameOver FSM)
+#   TR-gamestate-002 (Scene Manager and orthogonal)
+#   TR-scene-001 (Scene-level dynamic loading)
+#   TR-scene-002 (AI-generated asset variant management)
+#   TR-scene-003 (async progress publish)
+#   TR-audio-001 (AudioMixer Snapshot switching)
+#   TR-audio-002 (SE pooling / BGM zone-based)
+#   TR-audio-003 (IAudioPublisher service)
+#   TR-vfx-001 (IVFXPublisher pub/sub)
+#   TR-vfx-002 (Class switch radial gradient)
+#   TR-perf-002 (Memory / VRAM / Draw Calls budgets)
+#   TR-loc-001 (Localization discipline from MVP day 1)
+#   TR-steam-001 (Steamworks.NET integration)
+#   TR-a11y-001 (Accessibility — d-pad/stick UI / no hover-only)

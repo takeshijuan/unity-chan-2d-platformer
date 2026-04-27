@@ -89,18 +89,54 @@
 
 | ADR | Gate | Status | Description |
 |-----|------|--------|-------------|
-| ADR-0001 | R5 | 待ち | Unityちゃん公式 PSB SpriteLibrary swap 1-frame sync 検証 |
+| ADR-0001 | R5 | **R5 spike 完了**（main 取込：`prototypes/r5-class-switch-spike/`、`production/qa/evidence/r5-class-switch-spike-result.md`） | Accepted 昇格判定可 |
 | ADR-0002 | V1-V5 | 待ち | Rigidbody2D.Cast() / SyncTransforms / tunneling 防止検証 |
 | ADR-0003 | G1-G5 | 待ち | Anchor cue coverage / Pool hot path / Color Wash sorting / Cold-miss telemetry / Steam Deck performance |
+| ADR-0004 | S1-S5 | **draft 起草中**（本セッション） | Save / Load round-trip / Crash safety / Migration / Forbidden enforcement / Steam Deck I/O |
 
-## Session Extract — /architecture-review coverage 2026-04-27
+## Merged from origin/main (2026-04-27)
 
-- Verdict: **CONCERNS**
-- Requirements: 26 total — 8 covered / 9 partial / 8 gaps（N/A 1 件除く）
-- New TR-IDs registered: 26（tr-registry.yaml v2、初回エントリ群）
-- GDD revision flags: None（coverage モードのため Phase 5b 未実施）
-- Top ADR gaps（Foundation Blocking 3 件）:
-  1. Save Data System（TR-save-001 / TR-arch-A5 / TR-prod-002）— MVP 前倒し対象
-  2. Input System Architecture（TR-input-001）
-  3. Game State Machine（TR-arch-A3）
+- ADR-0001 patches D + E（Summary hitstop 表現、ColorWashCoroutine 多重起動ガード）適用済
+- ADR-0002 patches F + G（Cast 結果明示選択、Release Build `Debug.Assert` 評価）適用済
+- game-concept.md patch H（Unity version / R-T3 表現）適用済
+- 新規取込: `prototypes/r5-class-switch-spike/`（R5 検証 spike 完了 — ADR-0001 Accepted 昇格条件充足の可能性）
+- 新規取込: `docs/architecture/traceability-index.md`（v2 TR-ID + ADR matrix）
+- 新規取込: `docs/engine-reference/unity/modules/animation.md`（2D Animation 10.x 詳細）
+- TR-ID 命名統一: `TR-[system-slug]-[NNN]` per-system 連番（main 規約採用、HEAD 旧 TR-ID は破棄）
+
+## Session Extract — /architecture-review (full mode) 2026-04-27
+
+> **注**: 本 review は ADR-0003 起草前に実行された。「ADR-0003 (VFX System Boundary)」「ADR-0005 (Save Data)」を Top gap として記載しているが、**ADR-0003 は本ブランチで起草済（commit 2d63d94）**、**ADR-0004 として Save Data を起草中（本セッション）** であり、現実状況は更新されている。
+
+- Verdict: 🟡 CONCERNS
+- Requirements: 39 total — 14 covered (36%), 5 partial (13%), 20 gaps (51%)
+- New TR-IDs registered: 25（MVP 9 systems 分、main の全 review）
+- GDD revision flags: design/gdd/game-concept.md（Unity version line 236, R-T3 line 333）
+- Top ADR gaps（review 当時の状態）: ADR-0003 (VFX) → **書込済**, ADR-0004 (Class Abilities) → 未着手, ADR-0005 (Save Data) → **本セッションで ADR-0004 として起草中**
+- unity-specialist anti-patterns: AP-1 ColorWashCoroutine 多重起動ガード (Medium), AP-3 Debug.Assert Release Build 評価 (Medium), AP-4/AP-5 Low
+- Patches applied (D-H): ADR-0001 Summary / ColorWashCoroutine ガード / ADR-0002 Cast 明示 / Release Build assert / game-concept.md
 - Report: docs/architecture/architecture-review-2026-04-27.md
+- Traceability index: docs/architecture/traceability-index.md
+- TR Registry: docs/architecture/tr-registry.yaml (version 2、TR-[system-slug]-[NNN] 命名)
+
+## Current Session State — ADR-0004 Save Data System 起草中
+
+- Skill: `/architecture-decision save-data-system` 実行中
+- 4 設計判断確認済（Hybrid trigger / Atomic write + .bak / Tier 0 ICloudSync stub / Library-agnostic POCO ISaveable）
+- ADR-0004 draft 書込済: `docs/architecture/adr-0004-save-data-system.md`（Status: Proposed, Validation Gate S1-S5）
+- unity-specialist + technical-director 並列レビュー完了
+  - unity-specialist: 5 HIGH + 2 MEDIUM finding（File.Replace exFAT / await stack / link.xml 拡充 / Dictionary 値型制約 / scene precondition / DefaultExecutionOrder / SyncTransforms）
+  - technical-director TD-ADR: **CONCERNS** — 3 BLOCKING + 3 HIGH + 4 MEDIUM
+    - B1: SpawnPointHelper Transform 直接書込 → ADR-0002 V1 revise で `ICharacterMotor.Teleport()` 追加要請
+    - B2: SwitchTo on load → ADR-0001 R5 revise で `SwitchContext` 追加要請
+    - B3: ISaveable 登録 path を `[RegisterSaveable]` attribute + reflection に一本化
+- 次アクション: ADR-0004 draft への 15 件 review finding 適用（user 承認済）
+
+## Outstanding Tasks（次セッション以降）
+
+- ADR-0004 review finding 15 件適用 → S1-S5 検証 → Accepted 昇格
+- ADR-0005 Game State Machine 起草（main の review で ADR-0005 と命名されたが、実際の番号は ADR-0005 で OK）
+- ADR-0006 Input System / ADR-0007 Class Abilities 起草
+- ADR-0001 R5 spike の Accepted 昇格判定（main の prototypes/r5-class-switch-spike/ を再評価）
+- ADR-0002 V1 revise: `ICharacterMotor.Teleport(Vector2, Facing)` API 追加（B1 解消）
+- ADR-0001 R5 revise: `SwitchContext { PlayerInput, SystemRestore, NarrativeForced }` 追加（B2 解消）

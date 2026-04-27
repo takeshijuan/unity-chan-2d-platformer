@@ -401,6 +401,7 @@ public class MotorTuning : ScriptableObject
 11. **motor は `Animator` の parameter を駆動しない**：`Animator.SetFloat("Speed", _velocity.x)` 等を motor 内で行うと motor の責務が膨れ A2 と同型の drift を招く。代わりに **Animator parameter は `StateChanged` / `Landed` event subscriber が `Update()` で同フレーム反映**する。1 frame 遅延が問題になるケース（着地アニメ即時反映等）は `StateChanged` event 経由で `Update()` 中に `Animator.Play(stateHash, 0, normalizedTime)` を直接呼ぶ subscriber を別途用意（本 ADR の責務外）。
 12. **`OverrideGravity` / `LockHorizontalControl` の重複呼び出し合成規則**：`LockHorizontalControl(durationSec)` は `Mathf.Max(残り時間, durationSec)`（**長い方優先**）。`OverrideGravity(multiplier, durationSec)` は **multiplier は後勝ち、durationSec は max**（hover 中に heavy stomp が来たら multiplier は heavy stomp の値で上書き、duration は両者の max）。この非対称は意図的：移動制限は累積したい / 重力ゲートは「最新の意図」を優先したい。ADR-0004 着手時に「合成規則を後勝ち統一にすべきか」の再評価候補として残す（本 ADR では上記規則で固定）。
 13. **`Debug.Assert` は Release ビルドでも条件評価が残る**：Unity の `Debug.Assert` は `UNITY_ASSERTIONS` シンボル制御で、**Release Player でも stripping されず実行される**。Awake() 内 1 回実行のため performance 影響は無視できるが、FixedUpdate / Update 内で `Debug.Assert` を多用する場合は `#if UNITY_EDITOR || DEVELOPMENT_BUILD` ガードを別途用いること。本 ADR の Awake `Debug.Assert` は条件評価コストを許容する設計。
+14. **Cast 結果は明示的に最小 distance を選択**：Box2D v3 の Cast 結果配列のソート順保証は `engine-reference/unity/modules/physics.md` に未明文化のため、`_castResults[0]` を最近傍と暗黙仮定するロジックは禁忌。代わりに `CastAndSlide` 内で `hitCount` を走査し最小 `RaycastHit2D.distance` をもつヒットを選択する明示的ロジックを書く。V1 spike で Cast 結果ソート順保証も併せて検証し、保証が確認できた場合のみ Tier 1 で `_castResults[0]` 仮定への簡素化を再評価する。`/architecture-review 2026-04-27` Q5 対応（unity-specialist consultation）。
 
 ## Alternatives Considered
 
@@ -562,6 +563,7 @@ public class MotorTuning : ScriptableObject
 - [ ] Unityちゃん公式 PSB で着地時の足裏接地位置が SkinAnchor と整合（V5、Editor 目視）
 - [ ] motor `FixedUpdate` ≤ 0.5 ms（warm path 平均、Unity Profiler 計測、V4）
 - [ ] 30 m/s dash 想定の境界テストで tunneling 発生なし（V3）
+- [ ] Release Build Profiler で Awake() の `Debug.Assert` 群が想定外コストを計上しないことを確認（AP-3、Steam Deck Verified ビルド検証時に特に重要、`/architecture-review 2026-04-27` unity-specialist consultation 由来）
 
 ### Tier 1 達成条件
 
