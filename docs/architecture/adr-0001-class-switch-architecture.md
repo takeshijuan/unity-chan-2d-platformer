@@ -24,7 +24,7 @@
 
 ## Summary
 
-本作 `職業オーブのレガシー` の Pillar 1「切替が、花になる」を成立させる Class Switch System のアーキテクチャを `ScriptableObject(ClassDefinition) + MonoBehaviour(ClassStateMachine) + 2D Animation 10.x SpriteLibrary` の3層構造で決定する。Tier 0 では VFX/Audio System 不在でも minimal feedback（color wash + SE + hitstop）を ClassStateMachine が自己内包し、Tier 1 で `IVFXPublisher` / `IAudioPublisher` へリファクタする経路を持つ。
+本作 `職業オーブのレガシー` の Pillar 1「切替が、花になる」を成立させる Class Switch System のアーキテクチャを `ScriptableObject(ClassDefinition) + MonoBehaviour(ClassStateMachine) + 2D Animation 10.x SpriteLibrary` の3層構造で決定する。Tier 0 では VFX/Audio System 不在でも minimal feedback の color wash + SE を ClassStateMachine が自己内包し、Tier 1 で `IVFXPublisher` / `IAudioPublisher` へリファクタする経路を持つ。Hitstop の権威は ADR-0002 の `ICharacterMotor.ApplyHitstop()` にあり、Class Switch は呼び出し元として連携する（CD1 申し送り対応の責務分離、`/architecture-review 2026-04-27` CONCERN-1 解消）。
 
 ## Engine Compatibility
 
@@ -243,6 +243,7 @@ public class ClassStateMachine : MonoBehaviour
 5. **AudioClip 二重持ち**（`SwitchSEMVP` + `SwitchSERef`）：Tier 1 で Addressables へ移行する際の asset データ破損を回避するための forward-compat。
 6. **MVP では `_availableClasses[]` 直配列、Tier 1 で `UnlockClass(ClassDefinition)` 公開 API**：runtime unlock は MVP scope 外（PR-SCOPE 制約）。
 7. **サイクル順序の単体テスト**：MVP テストとして「Inspector 配列順に R1 連打で正しく循環する」アサーション 1 本を必須化。
+8. **ColorWashCoroutine の多重起動ガード必須**：連打時に複数コルーチンが重複起動して `SpriteRenderer.color` が競合・残色するリスクを防ぐため、`StartCoroutine` 前に `if (_colorWashCoroutine != null) StopCoroutine(_colorWashCoroutine)` を必須化。Tier 1 で `Awaitable`（Unity 6.0+）への置換時にも同等のキャンセル機構（`CancellationTokenSource.Cancel()` 経由）を維持する。`/architecture-review 2026-04-27` AP-1 対応（unity-specialist consultation）。
 
 ## Alternatives Considered
 

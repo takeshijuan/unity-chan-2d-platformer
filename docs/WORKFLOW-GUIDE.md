@@ -128,7 +128,7 @@ production/           # Sprint plans, milestones, releases
   releases/
   epics/              # Epic and story files (from /create-epics + /create-stories)
   playtests/          # Playtest reports
-  session-state/      # Ephemeral session state (gitignored)
+  session-state/      # Live session checkpoint (active.md tracked for hand-off)
   session-logs/       # Session audit trail (gitignored)
 ```
 

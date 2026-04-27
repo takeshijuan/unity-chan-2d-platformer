@@ -233,7 +233,7 @@ Unityちゃん／AI 生成キャラのかわいさを保ちつつ、戦闘のヒ
 
 | Consideration | Assessment |
 | ---- | ---- |
-| **Recommended Engine** | **Unity 6 LTS (6000.0.x)** — ユーザー Unity 経験あり、Unityちゃん本家、URP 2D が本作の 2D メトロイドヴァニアに最適 |
+| **Recommended Engine** | **Unity 6.3 LTS (6000.3.x)** — ユーザー Unity 経験あり、Unityちゃん本家、URP 2D が本作の 2D メトロイドヴァニアに最適（`docs/engine-reference/unity/VERSION.md` で pin、`/architecture-review 2026-04-27` で revision） |
 | **Render Pipeline** | **Universal RP 2D Renderer** — 2D Lights / Shadows / Sprite Masking 標準搭載 |
 | **Input** | Input System 1.8+（Steam Input 対応、Action Rebinding UI） |
 | **Camera** | Cinemachine 3（2D Confiner Extension、CinemachineCamera 新 API） |
@@ -242,7 +242,7 @@ Unityちゃん／AI 生成キャラのかわいさを保ちつつ、戦闘のヒ
 | **Tilemap** | Unity 2D Tilemap + Tilemap Extras（Rule Tile、Animated Tile） |
 | **Asset Management** | Addressables 2.0（Scene 単位の動的ロード、AI 生成アセットのバリアント管理） |
 | **Serialization** | Newtonsoft.Json for Unity（公式）+ Steam Cloud（Steamworks.NET `ISteamRemoteStorage`） |
-| **Key Technical Challenges** | (1) 職業切替 1 フレーム同期 — 解決可能（ScriptableObject + SpriteLibrary で ~0.4ms）/ (2) AI 生成スプライト一貫性 — 案C Hybrid で根本的に回避 / (3) UCL 2.0 の衣装改変可否 — Unity Japan への事前照会必須 |
+| **Key Technical Challenges** | (1) 職業切替 1 フレーム同期 — 解決可能（ScriptableObject + SpriteLibrary で 0.7-0.8ms / 切替、ADR-0001 Performance Implications 参照、`/architecture-review 2026-04-27` で revision）/ (2) AI 生成スプライト一貫性 — 案C Hybrid で根本的に回避 / (3) UCL 2.0 の衣装改変可否 — Unity Japan への事前照会必須 |
 | **Art Style** | **2D Skeletal（Unityちゃん公式ベース）+ AI 生成武器/衣装/VFX 差分（案C Hybrid）** |
 | **Art Pipeline Complexity** | Medium — 公式素材で骨格、AI 生成で装飾差分。パイプライン確立 1-2 日 |
 | **Audio Needs** | Moderate — Unity 標準 AudioSource + AudioMixer で十分（Wwise/FMOD はスコープ外）、SE プール化、BGM はゾーン単位、戦闘/探索で AudioMixer Snapshot 切替 |
@@ -330,7 +330,7 @@ Direction B（ポップ・ダンジョン、MapleStory 系の太縁取り × 高
 
 - **R-T1**：AI 生成スプライト一貫性（Critical）→ **案C Hybrid で根本回避**、モーションは Unity 公式 2D Animation で骨格アニメ
 - **R-T2**：UCL 2.0 の衣装大幅改変可否（High）→ **Unity Japan への事前照会必須**、Sprite Library レイヤー分離で万一の差替コスト最小化
-- **R-T3**：職業切替 1 フレーム同期（Low）→ ScriptableObject + SpriteLibrary + VFX プール化で解決可能、~0.4ms コスト
+- **R-T3**：職業切替 1 フレーム同期（Low）→ ScriptableObject + SpriteLibrary + VFX プール化で解決可能、ADR-0001 Performance Implications で 0.7-0.8ms / 切替（cold path 1.0ms 許容）として budget 確定（`/architecture-review 2026-04-27` で revision、原典 ~0.4ms 見積から ADR 整合）
 - **R-T4**：メトロイドヴァニア向けマップ設計（Medium）→ Tilemap + Cinemachine Confiner + Additive Scene Loading + ScriptableObject RuntimeSet で対応
 - **R-T5**：セーブ互換性（Low）→ `schemaVersion` + マイグレーションチェーン、`.bak` 1 世代バックアップ
 - **R-T6**：Steam AI 開示ポリシー → プロジェクト開始時から AI 使用ログ記録、申請フローを Tier 2b EA リリースまでに整備

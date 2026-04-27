@@ -90,3 +90,30 @@
 ### technical-preferences.md ADR Log 同期タスク（持ち越し）
 
 - ADR-0001 Accepted 後、`technical-preferences.md` の "Architecture Decisions Log" を更新（実ファイル番号への同期）
+
+## Session Extract — /architecture-review 2026-04-27
+
+- Verdict: 🟡 CONCERNS
+- Requirements: 39 total — 14 covered (36%), 5 partial (13%), 20 gaps (51%)
+- New TR-IDs registered: 25（MVP 9 systems 分のみ）
+- GDD revision flags: design/gdd/game-concept.md（Unity version line 236, R-T3 line 333）
+- Top ADR gaps: ADR-0003 (VFX System Boundary), ADR-0004 (Class Abilities), ADR-0005 (Save Data System)
+- unity-specialist anti-patterns: AP-1 ColorWashCoroutine 多重起動ガード (Medium), AP-3 Debug.Assert Release Build 評価 (Medium), AP-4/AP-5 Low
+- ADR-0001 Summary CONCERN-1: line 27 hitstop 記述要修正（State Ownership ambiguity）→ **2026-04-27 同セッションで適用済**
+- Report: docs/architecture/architecture-review-2026-04-27.md
+- Traceability index: docs/architecture/traceability-index.md
+- TR Registry updated: docs/architecture/tr-registry.yaml (version 2)
+
+### Patches applied (2026-04-27 same session, D-H)
+
+- **D**: ADR-0001 Summary line 27 — `（color wash + SE）` 化 + Hitstop は ADR-0002 ICharacterMotor.ApplyHitstop 経由を明記（CONCERN-1 解消）
+- **E**: ADR-0001 Implementation Guidelines #8 追加 — ColorWashCoroutine 多重起動ガード必須化（AP-1）
+- **F**: ADR-0002 Implementation Guidelines #14 追加 — Cast 結果は `_castResults[0]` 暗黙仮定禁止、明示的に最小 distance 選択（Q5 補強）
+- **G**: ADR-0002 Validation Criteria — Release Build Profiler `Debug.Assert` 計上確認 checkbox 追加（AP-3）
+- **H**: game-concept.md 3 箇所 revision — line 236 "Unity 6 LTS (6000.0.x)" → "Unity 6.3 LTS (6000.3.x)"、line 245 / line 333 R-T3 で "~0.4ms" → "0.7-0.8ms（ADR-0001 Performance Implications 参照）"
+
+### Outstanding tasks（次セッション）
+
+- ADR-0001 R5 spike + ADR-0002 V1-V5 spike 合体プロトタイプ実施（両 ADR Accepted 化の必須条件）
+- ADR-0003 (VFX System Boundary) / ADR-0004 (Class Abilities) / ADR-0005 (Save Data) 起草（pre-production gate に向けて High priority）
+- 任意の AP-2 / AP-4 / AP-5（Low severity、Tier 1 リファクタ計画への取り込み）
