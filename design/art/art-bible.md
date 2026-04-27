@@ -1076,7 +1076,9 @@ f12: 全スロット scale 1.0 で安定
 
 #### ⚠️ 重要仕様: Color Wash (State 3) から HUD Canvas を除外
 
-**HUD Canvas は Color Wash の Render Texture マスクから外す**。被ダメ + 切替が重なる高頻度シナリオで「HP が 0.1-0.4 秒見えない」事態を防ぐ。「切替が唯一の主役」というアート意図は世界空間（キャラ、背景）でのみ実現し、HUD の機能は守る。
+**HUD Canvas は Color Wash の影響を受けない**。被ダメ + 切替が重なる高頻度シナリオで「HP が 0.1-0.4 秒見えない」事態を防ぐ。「切替が唯一の主役」というアート意図は世界空間（キャラ、背景）でのみ実現し、HUD の機能は守る。
+
+> **2026-04-27 ADR-0003 で実装手法確定**: 旧仕様の `Camera.OnRenderImage()` + Render Texture マスクは Unity 6.3 LTS / URP 2D Renderer で動作不可（URP Compatibility Mode 削除のため）。本作の Color Wash は **CinemachineBrain 直下の Animated Quad + `Sprite_ColorWash.shadergraph`** で実装し、HUD Canvas は **Sorting Layer 'VFX_Overlay' < UI Canvas Sorting Layer** の sorting 順で除外する（Render Texture マスクではなく Sorting Layer による除外）。詳細は [ADR-0003 VFX System Boundary + IVFXPublisher](../../docs/architecture/adr-0003-vfx-system-boundary.md) を参照。
 
 #### ダメージポップアニメーション
 
@@ -1571,8 +1573,9 @@ ScriptableObject 経由で色を ID 管理（`palette_swordmaster_red`、`palett
 #### G-6. VFX & 2D Light（H-2/H-3 推奨解採用）
 
 **VFX**:
-- 同時アクティブ ParticleSystem 上限: **20 個**
+- 同時アクティブ particle emitter 上限: **20 個**（backbone: Legacy ParticleSystem per [ADR-0003](../../docs/architecture/adr-0003-vfx-system-boundary.md)。VFX Graph は IVFXPublisher 抽象越しの将来オプション）
 - **職業切替エフェクト最優先**（10 DC 確保）、環境アンビエントは残枠
+- Per-cue object pool で aggregate 強制（VfxCueDefinition.MaxConcurrent / OverflowPolicy）
 - Material/Texture 共有で Atlas 経由バッチ統合（URP/Particles/Standard Unlit ベース）
 
 **2D Light**:

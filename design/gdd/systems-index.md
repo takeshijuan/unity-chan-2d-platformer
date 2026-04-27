@@ -110,9 +110,11 @@ GDD authoring 時に必ず以下のアーキテクチャ判断を反映するこ
 
 「Loading」状態を両者が二重に表現するリスクを避ける。GDD では「Loading 状態は Game State 側に持たせ、Scene Manager は async progress を publish するのみ」と明記。両者を一つに merge してはいけない（pause 中もシーン非ロード状態は維持される等、直交する状況がある）。
 
-### A4. VFX System の層配置（Core 層）→ 将来の ADR-0003（VFX System Boundary + IVFXPublisher、新設候補）
+### A4. VFX System の層配置（Core 層）→ ADR-0003（VFX System Boundary + IVFXPublisher、Proposed / Validation Gate G1-G5 待ち）
 
-VFX は Class Switch / Combat / Orb Acquisition / Boss / UI Notification すべてから publish される pub/sub サービス。**ゲームプレイの依存先ではなく依存元**として Core 層に配置済み。`IVFXPublisher`（`PlayCue(VfxCueId, Vector2, params)`）を Foundation 直上に置き、内部実装は Addressables から VFX prefab を引く。
+VFX は Class Switch / Combat / Orb Acquisition / Boss / UI Notification すべてから publish される pub/sub サービス。**ゲームプレイの依存先ではなく依存元**として Core 層に配置済み。`IVFXPublisher.PlayCue(VfxCueDefinition, in VfxCueArgs)` を `Game.Core.asmdef` に置き、内部実装（`Game.VFX.asmdef` の `VFXPublisherService`）は Addressables から VFX prefab を per-cue object pool で引く。Particle backbone は Legacy ParticleSystem（VFX Graph は IVFXPublisher 抽象越しの将来オプション）、Color Wash は CinemachineBrain 直下の Animated Quad + `Sprite_ColorWash.shadergraph` を Sorting Layer `VFX_Overlay` で実装。
+
+詳細・5 anchor cue（class_switch_orb_burst / hit_spark / dust_landed / hitstop_freeze_frame / orb_acquisition）・Tier 0 → Tier 1 移行 PR 分割・Validation Gate G1-G5 は ADR-0003 を参照すること。
 
 ### A5. Save Data System の論理分割（系統内）
 

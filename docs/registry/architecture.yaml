@@ -112,6 +112,28 @@ state_ownership:
     added: 2026-04-27
     revised: ""
 
+  - state: vfx_pool_state
+    status: proposed
+    owner_system: vfx-system
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    interface: "VFXPublisherService 内部の Dictionary<VfxCueDefinition, Stack<PooledVfxInstance>>（per-cue 利用可能インスタンスプール）+ Dictionary<VfxCueDefinition, int>（active count for MaxConcurrent enforcement）。外部 read 不可、IVFXPublisher 経由でのみ間接操作"
+    write_access: vfx-system-only
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - state: vfx_cue_handles
+    status: proposed
+    owner_system: vfx-system
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    interface: "VFXPublisherService 内部の Dictionary<int, PooledVfxInstance>（active VfxHandle id → instance map）。SpawnCue で発行された VfxHandle.Id を経由した Cancel / MoveTo / IsAlive のみ外部から操作可能、直接 read 不可"
+    write_access: vfx-system-only
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -146,14 +168,15 @@ interfaces:
     consumers:
       - hud
       - ability-executor
-      - vfx-system-future
+      - vfx-system   # confirmed by ADR-0003 (was vfx-system-future placeholder)
       - audio-system-future
     adr: docs/architecture/adr-0001-class-switch-architecture.md
     signal_signature: "ClassChanged(ClassDefinition newClass) — C# event Action<ClassDefinition>; also exposed as UnityEvent<ClassDefinition> for inspector-driven hooks"
     referenced_by:
       - docs/architecture/adr-0001-class-switch-architecture.md
+      - docs/architecture/adr-0003-vfx-system-boundary.md
     added: 2026-04-27
-    revised: ""
+    revised: 2026-04-27   # vfx-system-future → vfx-system 確定参照化
 
   - contract: motor_intent_command
     status: proposed
@@ -186,7 +209,7 @@ interfaces:
     consumers:
       - ability-executor
       - animator-driver
-      - vfx-system-future
+      - vfx-system   # confirmed by ADR-0003 (was vfx-system-future placeholder)
       - audio-system-future
     adr: docs/architecture/adr-0002-character-controller-motor.md
     signal_signature: |
@@ -199,6 +222,51 @@ interfaces:
       `Grounded` event は廃案 — Landed(Vector2) で着地検出は十分、IsGrounded プロパティとの命名衝突回避
     referenced_by:
       - docs/architecture/adr-0002-character-controller-motor.md
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: 2026-04-27   # vfx-system-future → vfx-system 確定参照化（ADR-0003）
+
+  - contract: vfx_publisher
+    status: proposed
+    pattern: direct_call
+    producer: any-gameplay-system
+    consumers:
+      - vfx-system
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    signal_signature: |
+      IVFXPublisher methods (synchronous, hot-path budget ≤ 0.2ms / call, 0-byte GC alloc):
+        PlayCue(VfxCueDefinition cue, in VfxCueArgs args) : void
+            — fire-and-forget. caller does not own lifetime. cold-miss は silent drop + counter
+        SpawnCue(VfxCueDefinition cue, in VfxCueArgs args) : VfxHandle
+            — persistent / cancellable cue（burning aura 等）。VfxHandle は Cancel / MoveTo / IsAlive を提供
+        SubscribeMotorEvents(ICharacterMotor motor) : void
+            — Tier 1 wiring。motor の Landed → dust_landed cue、HitstopApplied → hitstop_freeze_frame cue を自動 bind
+      VfxCueArgs is readonly struct (WorldPos / AttachTo / Direction / TintOverride / ScaleMult)
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: vfx_cue_definition
+    status: proposed
+    pattern: shared_resource
+    producer: vfx-system
+    consumers:
+      - any-gameplay-system   # 各 system は VfxCueDefinition を SerializeField で参照して PlayCue に渡す
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    signal_signature: |
+      VfxCueDefinition is ScriptableObject (one asset per cue under assets/vfx/cues/):
+        CueId : string                          — debug only, not used as runtime key
+        PrefabRef : AssetReferenceGameObject    — Addressables async load
+        MaxConcurrent : int                     — per-cue cap (anti-spam)
+        DefaultLifetimeSec : float              — Watchdog timeout = DefaultLifetimeSec * 1.5
+        PreloadOnSceneLoad : bool               — hot cue は true 必須（cold-miss 回避）
+        Layer : VfxLayer { World, Overlay, UI } — sorting hint
+        Overflow : OverflowPolicy { DropOldest, DropNewest }
+        AttachPolicy : AttachPolicy { WorldSpace, AttachToTransform }
+      Designer は SO asset 作成のみで cue 追加可能（コード編集不要）
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
     added: 2026-04-27
     revised: ""
 
@@ -268,6 +336,48 @@ performance_budgets:
     added: 2026-04-27
     revised: ""
 
+  - system: vfx-system
+    metric: vfx_publisher_play_cue
+    status: proposed
+    budget_ms: 0.2
+    cycle: per-event
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    notes: |
+      IVFXPublisher.PlayCue hot path budget per event:
+        pool.Pop() / Stack lookup       0.02-0.05ms
+        Transform.position assign       0.01ms
+        ParticleSystem.Play()           0.02-0.05ms
+        ColorWashController.Begin()     0.02ms (class_switch_orb_burst のみ)
+        active count++ / VfxHandle Id   0.01ms
+        ─────────────────────────────────
+        p99 target                      ≤ 0.20ms
+      GC.Alloc target: 0 byte / call (VfxCueArgs is readonly struct, no closure capture).
+      Validation Gate G2: Profiler EditMode で 1000 回 / 60s 連続発火、p99 ≤ 0.2ms 実測。
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - system: vfx-system
+    metric: vfx_total_per_frame
+    status: proposed
+    budget_ms: 1.5
+    cycle: Update + LateUpdate (per-frame)
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    notes: |
+      Steam Deck 1080p worst-case VFX rendering envelope:
+        Active emitters update (20 active)        ~0.5ms
+        Color Wash quad fragment shader           ~0.1-0.3ms
+        Pool dequeue / spawn (worst frame, 9 events) ~0.5ms (= 9 × 0.05ms PlayCue overhead)
+        ─────────────────────────────────────────────
+        target                                    ≤ 1.5ms
+      Project rendering budget（technical-preferences.md）は 6ms total。VFX は 1/4 envelope。
+      Validation Gate G5: Steam Deck 実機で boss scene + 20 emitter で実測。
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
 # Example:
 #
 # performance_budgets:
@@ -320,6 +430,51 @@ api_decisions:
     added: 2026-04-27
     revised: ""
     notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
+
+  - purpose: vfx_particle_backbone
+    status: proposed
+    api: "Legacy ParticleSystem (UnityEngine.ParticleSystem) — IVFXPublisher 抽象越しに将来 VFX Graph 移行可能"
+    not: "VFX Graph (UnityEngine.VFX) を Tier 1 で primary backbone にしない / Hybrid backbone （hero=VFX Graph + cheap=Legacy）構成"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "Unity 6.3 で Legacy ParticleSystem は deprecated 表示だが機能は維持、削除時期未公表。VFX Graph は URP 2D Output Particle Sprite 統合に caveats（Sub-emitter / Trail Renderer 2D 連携不足）、現スコープ（20 emitter）に対して GPU/compute は overkill。IVFXPublisher 抽象により後日 cue 単位で backbone swap 可能なので将来移行を阻害しない。"
+    revisit_trigger: "Unity 6.4 LTS が Legacy ParticleSystem の削除予告アナウンスを出した時点 / VFX Graph URP 2D 統合の caveats 解消時"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: vfx_color_wash_technique
+    status: proposed
+    api: "CinemachineBrain 直下の Animated Quad（child Transform）+ Sprite_ColorWash.shadergraph（_RadialCenter Vector2 / _Progress 0..1 / _BaseColor Color プロパティ）、Sorting Layer 'VFX_Overlay'（World < VFX_Overlay < UI Canvas の順）"
+    not: "Camera.OnRenderImage() （URP 6.3 で動作不可）/ ScriptableRendererFeature + RenderGraph custom pass（学習コスト過大）/ Volume framework Color Adjustments override（放射状グラデーション不可）/ Per-sprite tint のみ（Pillar 1 報酬感不足）"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "art-bible.md に既存 custom shader budget として Sprite_ColorWash.shadergraph が枠取り済み（line 1592）。Animated Quad アプローチは Render Pipeline カスタマイズ不要、Steam Deck で 0.1-0.3ms、HUD マスクは Sorting Layer で除外（脆弱な render-pass exclusion 不要）。art-bible.md line 1077-1079 の `Render Texture マスク` 表現は本決定で supersede。"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: vfx_cold_miss_policy
+    status: proposed
+    api: "Silent drop + Debug.Log warning [Conditional UNITY_EDITOR] + ColdMissCount[cue] counter increment。hot cue は VfxCueDefinition.PreloadOnSceneLoad = true を契約化"
+    not: "Addressables.WaitForCompletion() で同期 stall / queue → load 完了後の delayed fire"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "Pillar 1 の 1-frame 視覚同期を最優先。WaitForCompletion は初回 10-50ms hitch、queue は stale な visual feedback で入力同期破綻。silent drop はプロファイラで検出可能、CI smoke test で「playable scene 5 anchor cue で cold-miss = 0」をアサート可能。"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: vfx_addressables_key_form
+    status: proposed
+    api: "AssetReferenceGameObject in VfxCueDefinition (ScriptableObject SerializeField)"
+    not: "enum VfxCueId（cue 追加でコード編集必須）/ string addressable key（typo がコンパイル通過、Find References 不能）"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "型安全性 + Find References 動作 + refactor-rename 動作 + デザイナーが SO asset 作成のみで cue 追加可能（コード編集不要）。technical-preferences.md「Magic numbers — ScriptableObject に配置」と同思想。"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
 
 # Example:
 #
@@ -379,6 +534,41 @@ forbidden_patterns:
     description: "Physics2D.autoSyncTransforms = true の使用を禁止。MovePosition 後は Physics2D.SyncTransforms() を明示的に呼び出すこと。"
     why: "Unity 6.3 で Physics2D.autoSyncTransforms は deprecated（6.5 で削除予定）。明示呼出により Box2D v3 マルチスレッド環境で「MovePosition → SyncTransforms → 次 Cast クエリ」の sequence を制御可能、race を回避できる。docs/engine-reference/unity/breaking-changes.md および deprecated-apis.md 参照。"
     adr: docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+
+  - pattern: vfx_writes_motor_state
+    status: proposed
+    description: "VFX System が ICharacterMotor の状態（Position / Velocity / IsGrounded / Facing / State）を直接 write してはいけない。VFX は motor の event notification を subscribe するのみで、state mutation は禁止。"
+    why: "ADR-0002 で確定した motor write authority の排他性（character-controller-2d-only）を維持し、replay 安全性（gameplay state の決定論性）を保つ。VFX が motor 状態を mutate すると particle seed の非決定性が gameplay に漏れる。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_camera_onrenderimage
+    status: proposed
+    description: "Camera.OnRenderImage() を使った post-effect（Color Wash 含む）の実装を禁止。"
+    why: "Unity 6.3 で URP Compatibility Mode が完全削除されたため、URP 2D Renderer で Camera.OnRenderImage は呼ばれない。art-bible.md line 1077-1079 の `Render Texture マスク` 旧仕様は ADR-0003 で Sorting Layer 'VFX_Overlay' + Animated Quad アプローチに supersede。docs/engine-reference/unity/breaking-changes.md (lines 154-167) 参照。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_renderpipeline_compatibilitymode
+    status: proposed
+    description: "URP Compatibility Mode (`UniversalRenderPipelineGlobalSettings.enableRenderCompatibilityMode = true`) の使用を禁止。RenderGraph API ベースの新パターンを使うこと。"
+    why: "Unity 6.3 で完全削除済み。enableRenderCompatibilityMode は read-only かつ常に false を返す。Compatibility Mode に依存した render pass / volume effect は機能しない。docs/engine-reference/unity/breaking-changes.md (lines 154-167) 参照。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_synchronous_waitforcompletion
+    status: proposed
+    description: "IVFXPublisher.PlayCue の hot path で Addressables.WaitForCompletion() を呼んではいけない。cold-miss 時は silent drop + counter で対応。"
+    why: "WaitForCompletion は初回ロード時に 10-50ms の frame hitch を引き起こし、Pillar 1「切替が、花になる」1-frame 視覚同期を破壊する。hot cue は VfxCueDefinition.PreloadOnSceneLoad = true で回避、レアな cue は cold-miss 許容（プロファイラで検出可能、CI smoke test で 0 をアサート）。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_global_pool
+    status: proposed
+    description: "VFX 全体で 1 つのグローバル GameObject Stack を共有する pool 構造を禁止。Per-cue pool（Dictionary<VfxCueDefinition, Stack<PooledVfxInstance>>）を使うこと。"
+    why: "cue ごとに prefab root 構造（ParticleSystem / Trail Renderer / Sub-emitter / SpriteRenderer 構成）が異なるため、グローバル pool は reset コストが高くバグの温床。typed bucket（per-cue pool）と運用上等価で API もクリーンに保てる。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
     added: 2026-04-27
 
 # Example:
