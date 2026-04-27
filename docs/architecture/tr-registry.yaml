@@ -24,33 +24,229 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 1
-last_updated: ""
+version: 2
+last_updated: "2026-04-27"
 
-requirements: []
+requirements:
+  # --- Pillar-derived requirements (game-concept.md) ---
+  - id: TR-pillar-001
+    system: pillar
+    gdd: design/gdd/game-concept.md
+    requirement: "Pillar 1: R1/L1 1ボタン即時切替、入力受信から視覚反映が同一フレーム内完了"
+    created: 2026-04-27
+    revised: ""
+    status: active
 
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: superseded-by: TR-combat-001
+  - id: TR-pillar-002
+    system: pillar
+    gdd: design/gdd/game-concept.md
+    requirement: "Pillar 1 / Core Mechanic 1: 切替時の視覚（color wash）+ 聴覚（SE）報酬"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-pillar-003
+    system: pillar
+    gdd: design/gdd/game-concept.md
+    requirement: "Pillar 3「歯ごたえ」: hitstop + knockback + impact frame で操作レスポンスの重量感"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-pillar-004
+    system: pillar
+    gdd: design/gdd/game-concept.md
+    requirement: "Pillar 4: 4職目追加がコード変更ゼロ（ScriptableObject Asset 追加と Inspector 配列のみ）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Class Switch System ---
+  - id: TR-class-001
+    system: class-switch
+    gdd: design/gdd/game-concept.md
+    requirement: "R-T3: ScriptableObject + SpriteLibrary + VFX プール化で切替コスト ~0.4ms（≤0.8ms 予算）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- CharacterController2D ---
+  - id: TR-cc2d-001
+    system: cc2d
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations / R-T1: Kinematic Rigidbody2D + 自作 CharacterController2D（Box2D v3 マルチスレッド整合）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-cc2d-002
+    system: combo-input
+    gdd: design/gdd/game-concept.md
+    requirement: "Core Mechanic 4: 先行入力バッファ 4-6 フレーム、空中キャンセル、職業間コンボ受け渡し"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Art Pipeline ---
+  - id: TR-art-001
+    system: art-pipeline
+    gdd: design/gdd/game-concept.md
+    requirement: "R-T1 / Visual Identity: AI生成スプライト一貫性を案C Hybrid + 統一縁取り 2-3px 後処理で吸収"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Save Data System ---
+  - id: TR-save-001
+    system: save-data
+    gdd: design/gdd/game-concept.md
+    requirement: "R-T5: schemaVersion + Newtonsoft.Json + .bak 1 世代 + Steam Cloud 同期"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Scene & Addressables ---
+  - id: TR-addr-001
+    system: scene-addressables
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations: Addressables 2.0 Scene 動的ロード、AI 生成アセットのバリアント管理"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Camera System ---
+  - id: TR-cam-001
+    system: camera
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations: Cinemachine 3 + 2D Confiner Extension、CinemachineCamera 新 API"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Input System ---
+  - id: TR-input-001
+    system: input
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations: Input System 1.8+ / Action Rebinding UI / Steam Input 連携"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Animation ---
+  - id: TR-anim-001
+    system: animation
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations: 2D Skeletal Animation 10.x + PSD Importer + Unityちゃん公式 PSB"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Rendering ---
+  - id: TR-render-001
+    system: rendering
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations: URP 2D Renderer 採用（Built-in RP / Compatibility Mode 不採用）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Engine ---
+  - id: TR-engine-001
+    system: engine
+    gdd: design/gdd/game-concept.md
+    requirement: "Technical Considerations: Unity 6.3 LTS (6000.3.x) pin の根拠"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Architecture Notes (systems-index.md) ---
+  - id: TR-arch-A1
+    system: class-abilities
+    gdd: design/gdd/systems-index.md
+    requirement: "A1: Class Abilities God Object 防止 — ClassAbilityData(SO) + IAbilityExecutor(MB) + AbilityContext(DI) 三分割"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-arch-A2
+    system: cc2d
+    gdd: design/gdd/systems-index.md
+    requirement: "A2: CC2D ↔ Class Abilities 双方向結合防止 — ICharacterMotor 意図ベース API（RequestImpulse / OverrideGravity / LockHorizontalControl / ApplyHitstop / SetFacing）のみ公開"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-arch-A3
+    system: game-state
+    gdd: design/gdd/systems-index.md
+    requirement: "A3: Game State Machine（プレイヤー視点モード）と Scene & Addressables Manager（物理ロード状態）の責務直交化、Loading 状態は Game State 側に持つ"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-arch-A4
+    system: vfx
+    gdd: design/gdd/systems-index.md
+    requirement: "A4: VFX System を Core 層 pub/sub サービス（IVFXPublisher）として配置、依存ゼロ、すべての consumer から publish 可能"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-arch-A5
+    system: save-data
+    gdd: design/gdd/systems-index.md
+    requirement: "A5: Save Data System を ISaveable interface + section-based JSON（player / world / settings / meta）で系統内分割、System split しない"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Creative Director Notes (systems-index.md) ---
+  - id: TR-cd-CD1
+    system: class-switch
+    gdd: design/gdd/systems-index.md
+    requirement: "CD1: Tier 0 self-contained minimal feedback — color wash 0.1-0.2s + 内蔵 SE + hitstop 30-50ms（Class Switch / CC2D 内包、VFX/Audio System 不在で Pillar 1 検証可能）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-cd-CD2
+    system: combat
+    gdd: design/gdd/systems-index.md
+    requirement: "CD2: Combat Tier 0 inline hit feedback — HP=1 dummy enemy + hitstop + knockback impulse のみ（HP/ダメージ計算は Tier 1）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-cd-CD4
+    system: class-abilities
+    gdd: design/gdd/systems-index.md
+    requirement: "CD4: Anti-Pillar 監視 — アンロックツリー / 強化スロット提案を Class Abilities GDD で REJECT する規律"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Production Constraints (systems-index.md) ---
+  - id: TR-prod-001
+    system: localization
+    gdd: design/gdd/systems-index.md
+    requirement: "Localization Discipline: MVP day 1 から Strings.[Category].[Key] 形式キー参照のみ、コードに生文字列禁止"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  - id: TR-prod-002
+    system: save-data
+    gdd: design/gdd/systems-index.md
+    requirement: "Production Constraint Option A: Save Data 最小スタブを MVP に前倒し（schemaVersion=1 + JSON I/O のみ、実体データは VS で拡張）"
+    created: 2026-04-27
+    revised: ""
+    status: active
+
+  # --- Performance Budget (technical-preferences.md) ---
+  - id: TR-perf-001
+    system: performance
+    gdd: design/gdd/game-concept.md
+    requirement: "60fps / 16.6ms frame budget の全体配分（Update ≤4ms / Physics ≤2ms / Rendering ≤6ms / Other ≤4ms）"
+    created: 2026-04-27
+    revised: ""
+    status: active
