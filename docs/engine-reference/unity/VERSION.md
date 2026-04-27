@@ -2,18 +2,33 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Unity 6.3 LTS |
+| **Engine Version** | **Unity 6.3 LTS** (internal: `6000.3.x`) |
 | **Release Date** | December 2025 |
-| **Project Pinned** | 2026-02-13 |
-| **Last Docs Verified** | 2026-02-13 |
-| **LLM Knowledge Cutoff** | May 2025 |
+| **Project Pinned** | 2026-04-23 |
+| **Last Docs Verified** | 2026-04-23 |
+| **LTS Support End** | 2027-12（Enterprise/Industry は +1年） |
+| **LLM Knowledge Cutoff** | May 2025（setup-engine skill 基準） |
+| **Actual Assistant Cutoff** | January 2026（Claude 4.X 系） |
+| **Risk Level** | **MEDIUM-HIGH** — Unity 6.3 LTS は 2025-12 リリース、LLM 訓練データカバレッジ不完全 |
+| **Project Focus** | 2D メトロイドヴァニア、URP 2D Renderer、2D Animation (Skeletal)、Box2D v3、MonoBehaviour ベース（DOTS 不使用） |
 
 ## Knowledge Gap Warning
 
-The LLM's training data likely covers Unity up to ~2022 LTS (2022.3). The entire
-Unity 6 release series (formerly Unity 2023 Tech Stream) introduced significant
-changes that the model does NOT know about. Always cross-reference this directory
-before suggesting Unity API calls.
+The LLM's training data likely covers Unity up to ~2022 LTS (2022.3) and partially Unity 6.0. The Unity 6.1 / 6.2 / 6.3 series introduced significant changes that the model does NOT reliably know about. Always cross-reference this directory before suggesting Unity API calls.
+
+**本プロジェクトで特に注意すべき領域**（2D メトロイドヴァニア向け）:
+
+- **URP 2D Renderer** — Unity 6.3 で Unified Render Graph へ統合。旧 Compatibility Mode は削除
+- **2D Animation / Sprite Library** — パッケージ 10.x 系、PSD Importer 経由で Unityちゃん公式素材を扱う場合の API
+- **2D Physics (Box2D v3)** — Unity 6.3 でマルチスレッド化。決定論性向上
+- **Input System** — 1.8+ の Action Rebinding UI（Steam Input API 連携）
+- **Cinemachine 3** — `CinemachineCamera` 新 API、2D Confiner Extension 連携
+- **Addressables 2.0** — 例外スロー変更など API 挙動改訂
+
+LLM が提示する API が**古い記憶**からの場合、以下のファイルで検証：
+- `deprecated-apis.md` — 非推奨化された API ではないか？
+- `breaking-changes.md` — Unity 6.0 → 6.3 で破壊的変更があった領域ではないか？
+- `current-best-practices.md` — 現行ベストプラクティスに沿っているか？
 
 ## Post-Cutoff Version Timeline
 

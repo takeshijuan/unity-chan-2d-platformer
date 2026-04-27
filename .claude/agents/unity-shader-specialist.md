@@ -169,6 +169,22 @@ Before writing any code:
 - Full-precision floats on mobile where half-precision works
 - Post-processing effects not respecting quality tiers
 
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff. Before suggesting Shader Graph, HLSL, or RenderGraph code, you MUST:
+
+1. Read `docs/engine-reference/unity/VERSION.md` to confirm the Unity version (6.3 LTS)
+2. Check `docs/engine-reference/unity/breaking-changes.md` — RenderGraph / URP 2D 関連変更
+3. Check `docs/engine-reference/unity/deprecated-apis.md` — URP Compatibility Mode 削除等
+
+**本プロジェクト固有**:
+- **URP 2D Renderer** 採用、HDRP/Built-in は不採用
+- **RenderGraph API 必須**（旧 CommandBuffer ベースは不可、Unity 6.3 で Unified Render Graph）
+- 2D Lights / Shadows / Sprite Masking が VFX の核
+- 職業切替時のスクリーン色彩 wash エフェクト（Visual Identity Anchor 参照）は本作固有要件
+
+When in doubt, prefer the API documented in the reference files over your training data. WebSearch で `"Unity 6.3 [API名]"` 検索も積極活用。
+
 ## Coordination
 - Work with **unity-specialist** for overall Unity architecture
 - Work with **art-director** for visual direction and material standards

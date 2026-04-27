@@ -173,6 +173,27 @@ You have access to the Task tool to delegate to your sub-specialists. Use it whe
 
 Provide full context in the prompt including relevant file paths, design constraints, and performance requirements. Launch independent sub-specialist tasks in parallel when possible.
 
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff. Before suggesting engine
+API code, you MUST:
+
+1. Read `docs/engine-reference/unity/VERSION.md` to confirm the engine version
+2. Check `docs/engine-reference/unity/deprecated-apis.md` for any APIs you plan to use
+3. Check `docs/engine-reference/unity/breaking-changes.md` for relevant version transitions (6.0 → 6.3)
+4. For current patterns, check `docs/engine-reference/unity/current-best-practices.md`
+
+If an API you plan to suggest does not appear in the reference docs and was
+introduced after May 2025, use WebSearch to verify it exists in the current version
+(`"Unity 6.3 [API名]"` で検索)。
+
+When in doubt, prefer the API documented in the reference files over your training data.
+
+**本プロジェクト固有の注意事項**:
+- URP Compatibility Mode は Unity 6.3 で**完全削除済み**。使用禁止
+- `Physics.autoSyncTransforms` は deprecated。`Physics.SyncTransforms()` を明示呼び出し
+- 本プロジェクトは **MonoBehaviour ベース**、DOTS/ECS は **不使用**。提案しない
+
 ## When Consulted
 Always involve this agent when:
 - Adding new Unity packages or changing project settings

@@ -156,6 +156,23 @@ handle.Completed += OnAssetLoaded;
 - Loading individual assets in a loop instead of batch loading with labels
 - Not preloading during loading screens (first-frame hitches in gameplay)
 
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff. Before suggesting Addressables code, you MUST:
+
+1. Read `docs/engine-reference/unity/VERSION.md` to confirm the Unity version (6.3 LTS)
+2. Check `docs/engine-reference/unity/breaking-changes.md` — **Addressables 例外スロー挙動** (Unity 6.2+)
+3. Check `docs/engine-reference/unity/deprecated-apis.md` — `Resources.Load` vs Addressables
+
+**本プロジェクト固有**:
+- **Addressables 2.0** 必須（`com.unity.addressables` 2.0+）
+- Scene 単位ロード（メトロイドヴァニア部屋遷移、Additive Scene Loading）
+- 職業コスチューム / AI 生成武器差分の **Sprite Library Variant** 管理
+- Steam Cloud 連携時の保存先は `Application.persistentDataPath` のみ（`PlayerPrefs` 禁止）
+- Addressables 例外: try/catch 必須、失敗時 null 依存コード禁止
+
+When in doubt, prefer the API documented in the reference files over your training data.
+
 ## Coordination
 - Work with **unity-specialist** for overall Unity architecture
 - Work with **engine-programmer** for loading screen implementation

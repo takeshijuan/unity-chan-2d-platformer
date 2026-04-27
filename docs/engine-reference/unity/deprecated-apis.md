@@ -1,6 +1,6 @@
 # Unity 6.3 LTS — Deprecated APIs
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-04-23
 
 Quick lookup table for deprecated APIs and their replacements.
 Format: **Don't use X** → **Use Y instead**
@@ -63,6 +63,8 @@ Format: **Don't use X** → **Use Y instead**
 |------------|-------------|-------|
 | `Physics.RaycastAll()` | `Physics.RaycastNonAlloc()` | Avoid GC allocations |
 | `Rigidbody.velocity` (direct write) | `Rigidbody.AddForce()` | Better physics stability |
+| **`Physics.autoSyncTransforms`** (Unity 6.3) | **`Physics.SyncTransforms()` を明示呼び出し** | 6.3 で deprecated、6.5 で削除予定 |
+| **`Physics2D.autoSyncTransforms`** (Unity 6.3) | **`Physics2D.SyncTransforms()` を明示呼び出し** | 2D 版も同様 |
 
 ---
 
@@ -107,6 +109,15 @@ Format: **Don't use X** → **Use Y instead**
 | Deprecated | Replacement | Notes |
 |------------|-------------|-------|
 | WebGL 1.0 | WebGL 2.0 or WebGPU | Unity 6+ defaults to WebGPU |
+
+---
+
+## Rendering (Unity 6.3 追加)
+
+| Deprecated | Replacement | Notes |
+|------------|-------------|-------|
+| **URP Compatibility Mode** | RenderGraph API | Unity 6.3 で**完全削除**、`RenderGraphSettings.enableRenderCompatibilityMode` は読み取り専用 |
+| `CommandBuffer` ベースの旧 Custom RenderPass | `RasterRenderPass` / RenderGraph | Unity 6 から段階的移行、6.3 で完全必須化 |
 
 ---
 
