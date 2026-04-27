@@ -55,6 +55,63 @@ state_ownership:
     added: 2026-04-27
     revised: ""
 
+  - state: motor_position
+    status: proposed
+    owner_system: character-controller-2d
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    interface: "ICharacterMotor.Position (read-only Vector2 property) — Position は MovePosition + Physics2D.SyncTransforms() 適用後の値を返す。Cinemachine Camera follow / ability spawn point / VFX cue 位置参照のために read-only で公開"
+    write_access: character-controller-2d-only
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+    notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
+
+  - state: motor_velocity
+    status: proposed
+    owner_system: character-controller-2d
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    interface: "ICharacterMotor.Velocity (read-only Vector2 property) — Cast slide + impulse 加算後の当該 FixedUpdate 最終値。Class Switch（ADR-0001）が空中切替時の連続性確認に read"
+    write_access: character-controller-2d-only
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+    notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
+
+  - state: motor_grounded
+    status: proposed
+    owner_system: character-controller-2d
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    interface: "ICharacterMotor.IsGrounded (read-only bool property) — MotorState == Grounded のショートカット。ability 側で「接地中のみ可能なジャンプ」「空中ダッシュ消費」等の判定に read。external write は forbidden_patterns で禁止"
+    write_access: character-controller-2d-only
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+
+  - state: motor_facing
+    status: proposed
+    owner_system: character-controller-2d
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    interface: "ICharacterMotor.Facing (read-only Facing enum: Left / Right) — SpriteRenderer.flipX / ability spawn 方向 / camera offset 方向で参照。SetFacing(Facing) 経由でのみ書込可"
+    write_access: character-controller-2d-only
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+
+  - state: motor_state
+    status: proposed
+    owner_system: character-controller-2d
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    interface: "ICharacterMotor.State (read-only MotorState enum: Grounded / Airborne / WallSliding / Pinned) — Animator parameter driver / ability 可否判定 / SE トリガで参照。StateChanged event でも通知"
+    write_access: character-controller-2d-only
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -95,6 +152,53 @@ interfaces:
     signal_signature: "ClassChanged(ClassDefinition newClass) — C# event Action<ClassDefinition>; also exposed as UnityEvent<ClassDefinition> for inspector-driven hooks"
     referenced_by:
       - docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: motor_intent_command
+    status: proposed
+    pattern: direct_call
+    producer: ability-executor
+    consumers:
+      - character-controller-2d
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    signal_signature: |
+      ICharacterMotor methods (synchronous, FixedUpdate-deferred):
+        RequestImpulse(Vector2 impulse)                      — 1 frame additive
+        OverrideGravity(float multiplier, float durationSec) — multiplier 後勝ち、durationSec max 合成
+        LockHorizontalControl(float durationSec)             — 長い方優先で合成
+        ApplyHitstop(float durationSec)                      — 自身 Solver 停止 (CD1 Tier 0 内蔵)
+        SetFacing(Facing direction)                          — 向き強制
+    additional_consumers_future:
+      - combat-system        # ノックバック (RequestImpulse) / 被ダメ硬直 (LockHorizontalControl) / Hitstop
+      - class-switch-system  # 切替 invariant 維持時の SetFacing / 状態 read のみ
+      - enemy-ai-future      # 敵側で同 motor 抽象を再利用候補
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+    notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
+
+  - contract: motor_event_notification
+    status: proposed
+    pattern: csharp_event
+    producer: character-controller-2d
+    consumers:
+      - ability-executor
+      - animator-driver
+      - vfx-system-future
+      - audio-system-future
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    signal_signature: |
+      ICharacterMotor events (C# event Action<...>):
+        Landed(Vector2)         — arg: impact velocity (着地時のみ)
+        JumpStarted              — no args
+        WallTouched(Vector2)    — arg: wall normal
+        HitstopApplied(float)   — arg: duration sec
+        StateChanged(MotorState) — arg: 新 state (Grounded/Airborne/WallSliding/Pinned)
+      `Grounded` event は廃案 — Landed(Vector2) で着地検出は十分、IsGrounded プロパティとの命名衝突回避
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
     added: 2026-04-27
     revised: ""
 
@@ -141,6 +245,29 @@ performance_budgets:
     added: 2026-04-27
     revised: ""
 
+  - system: character-controller-2d
+    status: proposed
+    budget_ms: 0.5
+    cycle: FixedUpdate
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    notes: |
+      Internal breakdown (per FixedUpdate, warm path):
+        input + intent calc           0.05ms
+        gravity + impulse apply       0.05ms
+        Cast x 4-6 (horiz/vert/wall)  0.20ms
+        MovePosition + SyncTransforms 0.15ms
+        state update + event invoke   0.05ms
+        ─────────────────────────────────
+        total                         0.50ms
+      Cold path (first 10 FixedUpdate, Box2D v3 multithread init): allow up to 0.8ms.
+      Project Physics budget (.claude/docs/technical-preferences.md) is 2ms total —
+      motor occupies 1/4 of the Physics envelope.
+      GC.Alloc target: 0 byte / FixedUpdate (RaycastHit2D[] pre-allocated in Awake).
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+
 # Example:
 #
 # performance_budgets:
@@ -182,6 +309,18 @@ api_decisions:
     added: 2026-04-27
     revised: ""
 
+  - purpose: kinematic_motor_solver
+    status: proposed
+    api: "Kinematic Rigidbody2D + Rigidbody2D.Cast() / Collider2D.Cast() with pre-allocated RaycastHit2D[] + ContactFilter2D + Rigidbody2D.MovePosition() once per FixedUpdate + explicit Physics2D.SyncTransforms() (Unity 6.3 Box2D v3, exact overload names pending Editor verification per ADR-0002 Validation Gate V1)"
+    not: "Dynamic Rigidbody2D + AddForce / linearVelocity direct write / Physics2D.autoSyncTransforms = true"
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    reason: "Pillar 3 「歯ごたえ」 demands precise air control / coyote time / jump buffer / wall slide which Dynamic + linearDamping cannot deliver within Tier 0 6 weeks. Solver authority on the motor side + 1 frame 1 solve invariant + intent-based ICharacterMotor API prevents A2 bidirectional coupling structurally. Physics2D.autoSyncTransforms is deprecated in Unity 6.3 — explicit SyncTransforms required after MovePosition for Box2D v3 multithread safety."
+    referenced_by:
+      - docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+    revised: ""
+    notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
+
 # Example:
 #
 # api_decisions:
@@ -219,6 +358,27 @@ forbidden_patterns:
     description: "職業ごとに別の MonoBehaviour Controller (`SwordsmanController` / `ArcherController` etc.) を作って enable/disable で切替えてはいけない。ClassDefinition (ScriptableObject) + ClassStateMachine + AbilityExecutor の三分割を使うこと。"
     why: "Per-class MonoBehaviour Controllers tend to absorb ability + combat + movement + VFX trigger responsibility, becoming God Objects. This violates systems-index.md Architecture Note A1 (Class Abilities God Object prevention) and makes 4-class extension a linear-or-worse code duplication problem."
     adr: docs/architecture/adr-0001-class-switch-architecture.md
+    added: 2026-04-27
+
+  - pattern: external_motor_state_write
+    status: proposed
+    description: "外部システム（ability / combat / camera / AI / UI 等）が CharacterController2D の内部状態（Rigidbody2D.linearVelocity / Transform.position / Rigidbody2D.gravityScale / IsGrounded flag / MotorState 等）を直接 write してはいけない。状態変更は ICharacterMotor の意図ベース command（RequestImpulse / OverrideGravity / LockHorizontalControl / ApplyHitstop / SetFacing）経由のみ。"
+    why: "systems-index.md Architecture Note A2 で確定。直接 write は (a) Solver 権威性 1 frame 1 solve invariant を破壊、(b) Box2D v3 マルチスレッドの SyncTransforms タイミング保護を貫けない、(c) ability ↔ motor 双方向結合により Class Abilities が God Object 化する drift を招く。意図 API 経由のみの拘束を interface レベルで強制（ICharacterMotor に setter なし、Rigidbody2D 参照を Game.Core.asmdef 内に閉じ込め）。"
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+
+  - pattern: multi_movePosition_per_fixedupdate
+    status: proposed
+    description: "同一 FixedUpdate サイクル内で Rigidbody2D.MovePosition() を複数回呼び出してはいけない。motor の Solver が 1 FixedUpdate 1 solve で完結し、最終位置を 1 回だけ MovePosition に渡す invariant を維持する。"
+    why: "Multi-call は最後の値で上書きされ、中間 Solver 結果が破棄される。R2 invariant（1 frame 1 solve、ADR-0002 Decision）違反。Box2D v3 マルチスレッドにおいても予測可能性が崩れる。テストで境界（同 FixedUpdate 内 MovePosition 1 回のみ）を assert する。"
+    adr: docs/architecture/adr-0002-character-controller-motor.md
+    added: 2026-04-27
+
+  - pattern: physics2d_autoSyncTransforms
+    status: proposed
+    description: "Physics2D.autoSyncTransforms = true の使用を禁止。MovePosition 後は Physics2D.SyncTransforms() を明示的に呼び出すこと。"
+    why: "Unity 6.3 で Physics2D.autoSyncTransforms は deprecated（6.5 で削除予定）。明示呼出により Box2D v3 マルチスレッド環境で「MovePosition → SyncTransforms → 次 Cast クエリ」の sequence を制御可能、race を回避できる。docs/engine-reference/unity/breaking-changes.md および deprecated-apis.md 参照。"
+    adr: docs/architecture/adr-0002-character-controller-motor.md
     added: 2026-04-27
 
 # Example:

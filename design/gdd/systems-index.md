@@ -90,14 +90,18 @@ GDD authoring 時に必ず以下のアーキテクチャ判断を反映するこ
 - **`IAbilityExecutor`**（interface）— 実行ロジック。MonoBehaviour に実装
 - **`AbilityContext`**（注入オブジェクト）— `ICharacterMotor` / `IComboBuffer` / `IVFXPublisher` / `IAudioPublisher` を含む
 
-### A2. CharacterController2D ↔ Class Abilities の双方向結合防止 → 将来の ADR-0002（CharacterController2D + ICharacterMotor）で明文化
+### A2. CharacterController2D ↔ Class Abilities の双方向結合防止 → ADR-0002 で確定（Proposed, Validation Gate V1-V5）
 
-`archer dash` や `mage hover` のような ability が CC2D の内部状態（velocity, gravity scale, grounded flag）を直接書き換える設計を禁止。**Solver の権威性は CC2D 側に残す**（1 フレーム 1 solve、Box2D v3 SyncTransforms タイミング保護）。
+`archer dash` や `mage hover` のような ability が CC2D の内部状態（velocity, gravity scale, grounded flag）を直接書き換える設計を禁止。**Solver の権威性は CC2D 側に残す**（1 フレーム 1 solve、Box2D v3 SyncTransforms タイミング保護、`Physics2D.SyncTransforms()` 明示呼出）。
 
-`ICharacterMotor` interface のみを expose し、ability は意図ベース API のみ叩く：
-- `RequestImpulse(Vector2)`
-- `OverrideGravity(float duration)`
-- `LockHorizontalControl(bool)`
+`ICharacterMotor` interface のみを expose し、ability は意図ベース API のみ叩く（**ADR-0002 確定 spec**）：
+- `RequestImpulse(Vector2 impulse)` — 1 フレーム加算
+- `OverrideGravity(float multiplier, float durationSec)` — multiplier 後勝ち、durationSec は max 合成
+- `LockHorizontalControl(float durationSec)` — 長い方優先で合成
+- `ApplyHitstop(float durationSec)` — CD1 Tier 0 内蔵（30-50ms、`MotorTuning.HitstopDefaultSec = 0.04s`）
+- `SetFacing(Facing direction)` — ability 由来の向き強制
+
+詳細・合成規則・event 通知（`Landed` / `JumpStarted` / `WallTouched` / `HitstopApplied` / `StateChanged`）・performance budget（0.5 ms / FixedUpdate）は ADR-0002 を参照すること。
 
 ### A3. Game State Machine と Scene & Addressables Manager の責務直交化
 
