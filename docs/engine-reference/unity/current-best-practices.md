@@ -1,9 +1,28 @@
 # Unity 6.3 LTS — Current Best Practices
 
-**Last verified:** 2026-02-13
+**Last verified:** 2026-04-23
 
 Modern Unity 6 patterns that may not be in the LLM's training data.
 These are production-ready recommendations as of Unity 6.3 LTS.
+
+---
+
+## ⚠️ 本プロジェクト（2D メトロイドヴァニア）向けノート
+
+本プロジェクトは **MonoBehaviour ベースの 2D メトロイドヴァニア** です。以下のセクションは参考情報として残していますが、**本プロジェクトでは採用しない**ものも含まれます：
+
+- **DOTS/ECS（ISystem、IJobEntity）** → 本プロジェクトでは**不使用**（2D メトロイドヴァニアに対してオーバーエンジニアリング、ソロ数ヶ月スケジュールでの学習コストが見合わない）
+- **Netcode for GameObjects** → 本プロジェクトはシングルプレイなので**不使用**
+- **UI Toolkit** → 本プロジェクトでは初期 Tier は **UGUI** を使い、必要に応じて Tier 2 以降で UI Toolkit 検討（学習コスト vs 効果のトレードオフ）
+- **WebGL / モバイル** → PC のみなので該当セクションは無視
+
+本プロジェクトで**採用する**もの：
+- **Input System package**（Rebinding、Steam Input 対応のため必須）
+- **URP 2D Renderer** + 2D Lights / Shadows
+- **Addressables 2.0**（Scene 単位の動的ロードでメモリ管理、AI生成アセットのバリアント管理）
+- **2D Animation (Skeletal)** + PSD Importer（Unityちゃん公式素材）
+- **Cinemachine 3** 2D Confiner（メトロイドヴァニアのカメラ制御）
+- **Burst Compiler + Jobs**（必要に応じてパーティクルシステム等の並列処理で、ただしコア ループは MonoBehaviour で実装）
 
 ---
 

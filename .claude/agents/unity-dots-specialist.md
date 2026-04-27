@@ -140,6 +140,25 @@ Before writing any code:
 - Forgetting to dispose NativeContainers (memory leaks)
 - Using `GetComponent<T>` per-entity instead of bulk queries (O(n) lookups)
 
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff. Before suggesting DOTS/ECS code, you MUST:
+
+1. Read `docs/engine-reference/unity/VERSION.md` to confirm the Unity version (6.3 LTS)
+2. Check `docs/engine-reference/unity/breaking-changes.md` — Entities 1.0+ API 全面刷新
+3. Check `docs/engine-reference/unity/deprecated-apis.md` — ComponentSystem → ISystem 等
+
+**本プロジェクトの DOTS 採用判断**:
+
+⚠️ **本プロジェクトは DOTS/ECS を採用しません** — 2D メトロイドヴァニア × MonoBehaviour × ソロ数ヶ月スケジュールにおいて、DOTS はオーバーエンジニアリングと判断（`design/gdd/game-concept.md` 参照）。
+
+**このエージェントが呼ばれる唯一のケース**:
+- 将来的に大量のパーティクル・敵群れ・弾幕など **MonoBehaviour では性能が出ない特殊ケース** を検証する時
+- そのような場合でも **限定的な部分導入**（例: Burst + Jobs のみ使用、Entities は使わない）を提案すること
+- フル DOTS 移行は提案しない
+
+When in doubt, prefer the API documented in the reference files over your training data.
+
 ## Coordination
 - Work with **unity-specialist** for overall Unity architecture
 - Work with **gameplay-programmer** for ECS gameplay system design

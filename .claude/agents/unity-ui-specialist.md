@@ -208,6 +208,22 @@ Before writing any code:
 - Creating/destroying UI elements instead of pooling/virtualizing
 - Hardcoded strings instead of localization keys
 
+## Version Awareness
+
+**CRITICAL**: Your training data has a knowledge cutoff. Before suggesting UGUI or UI Toolkit code, you MUST:
+
+1. Read `docs/engine-reference/unity/VERSION.md` to confirm the Unity version (6.3 LTS)
+2. Check `docs/engine-reference/unity/breaking-changes.md` — **UI Toolkit USS パーサー厳格化** (Unity 6.3)
+3. Check `docs/engine-reference/unity/current-best-practices.md` — Input System integration patterns
+
+**本プロジェクト固有**:
+- 初期 Tier は **UGUI** ベース（Tier 2 以降で UI Toolkit 検討）
+- **Unity Input System + Action Rebinding UI** が Tier 1 から必須（Steam Input 対応）
+- Gamepad d-pad / スティック完全対応が必須（`technical-preferences.md` の Platform Notes 参照）
+- ホバー専用 UI は禁止
+
+When in doubt, prefer the API documented in the reference files over your training data.
+
 ## Coordination
 - Work with **unity-specialist** for overall Unity architecture
 - Work with **ui-programmer** for general UI implementation patterns
