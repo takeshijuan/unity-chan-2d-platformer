@@ -89,10 +89,11 @@
 
 | ADR | Gate | Status | Description |
 |-----|------|--------|-------------|
-| ADR-0001 | R5 | **R5 spike 完了**（main 取込：`prototypes/r5-class-switch-spike/`、`production/qa/evidence/r5-class-switch-spike-result.md`） | Accepted 昇格判定可 |
-| ADR-0002 | V1-V5 | 待ち | Rigidbody2D.Cast() / SyncTransforms / tunneling 防止検証 |
+| ADR-0001 | R5 | spike template ready（main 取込）、実行待ち | R5 + 新規 SwitchContext revise が ADR-0004/0005 前提 |
+| ADR-0002 | V1-V5 | 待ち | Rigidbody2D.Cast() / SyncTransforms / tunneling 防止検証 + 新規 Teleport API 追加要請 (ADR-0004 B1) |
 | ADR-0003 | G1-G5 | 待ち | Anchor cue coverage / Pool hot path / Color Wash sorting / Cold-miss telemetry / Steam Deck performance |
-| ADR-0004 | S1-S5 | **draft 起草中**（本セッション） | Save / Load round-trip / Crash safety / Migration / Forbidden enforcement / Steam Deck I/O |
+| ADR-0004 | S1-S6 | 待ち | Save / Load round-trip / Crash safety / Migration / Forbidden enforcement / Steam Deck I/O / IL2CPP CI gate |
+| **ADR-0005** | **I0-I5** | **待ち** | IL2CPP smoke / Action Map bleed-through / Rebinding round-trip / Combo Buffer timestamp / Roslyn analyzer / Steam Deck input |
 
 ## Merged from origin/main (2026-04-27)
 
@@ -119,24 +120,54 @@
 - Traceability index: docs/architecture/traceability-index.md
 - TR Registry: docs/architecture/tr-registry.yaml (version 2、TR-[system-slug]-[NNN] 命名)
 
-## Current Session State — ADR-0004 Save Data System 起草中
+## Current Session State — ADR-0005 Input System Architecture **起草完了**（Proposed/I0-I5）
 
-- Skill: `/architecture-decision save-data-system` 実行中
-- 4 設計判断確認済（Hybrid trigger / Atomic write + .bak / Tier 0 ICloudSync stub / Library-agnostic POCO ISaveable）
-- ADR-0004 draft 書込済: `docs/architecture/adr-0004-save-data-system.md`（Status: Proposed, Validation Gate S1-S5）
-- unity-specialist + technical-director 並列レビュー完了
-  - unity-specialist: 5 HIGH + 2 MEDIUM finding（File.Replace exFAT / await stack / link.xml 拡充 / Dictionary 値型制約 / scene precondition / DefaultExecutionOrder / SyncTransforms）
-  - technical-director TD-ADR: **CONCERNS** — 3 BLOCKING + 3 HIGH + 4 MEDIUM
-    - B1: SpawnPointHelper Transform 直接書込 → ADR-0002 V1 revise で `ICharacterMotor.Teleport()` 追加要請
-    - B2: SwitchTo on load → ADR-0001 R5 revise で `SwitchContext` 追加要請
-    - B3: ISaveable 登録 path を `[RegisterSaveable]` attribute + reflection に一本化
-- 次アクション: ADR-0004 draft への 15 件 review finding 適用（user 承認済）
+- Skill: `/architecture-decision input-system-architecture` Phase 0-7 完了（**2026-04-28**）
+- 4 設計判断確認済（4 Action Maps / IInputEventStream + Combo Buffer / Tier 0 default Steam Input + Tier 2a 専用 / Hover-only Roslyn analyzer）
+- ADR-0005 書込済: `docs/architecture/adr-0005-input-system-architecture.md`（766 行、39 セクション、Status: Proposed, Validation Gate I0-I5）
+- unity-specialist + technical-director 並列 review 完了 → **14 件 review finding 全適用 + Foundation Singleton stance 明示化**
+  - BLOCKING 1: B1 (`IInputService.SaveBindings/RestoreBindings` 追加 — concrete InputService 直接結合解消)
+  - HIGH 4: H1 (`InputAction.Reset()` 削除 — public API 不在) / H2 (link.xml 拡充) / H3 (Awake 順序 race null check) / **H4 (Foundation Singleton stance 明示化)**
+  - MEDIUM 9: M1 (`[System.Flags]`) / M2 (`GetBindingIndexForControl` -1 ガード) / M3 (`(float)ctx.time` 採用) / M4 (Knowledge Risk MEDIUM-HIGH) / M5 (ADR-0004 Coordinates with peer 化) / M6 (I0 IL2CPP smoke spike 追加) / M7 (I1 bleed-through spike 前倒し) / M8 (IUIInputProxy 所有権 ADR-0006 へ defer) / M9 (`.inputactions` stale CI)
+  - LOW 3: L1 (CI golden file) / L2 (typo fix) / L3 (非 Steam build fallback)
+- registry append 13 件完了（**新セクション architectural_stances** + 12 entry）:
+  - architectural_stances ×1: foundation_singleton_pattern（ADR-0001〜0005 統一容認）
+  - interfaces ×2: input_service_lifecycle / input_event_stream
+  - performance_budgets ×1: input_poll_per_frame (0.3ms / Update phase)
+  - api_decisions ×4: input_system_library / action_asset_workflow / input_event_timestamp / action_map_routing
+  - forbidden_patterns ×5: legacy_input_class_usage / playerprefs_for_binding / magic_string_action_name / direct_inputaction_subscribe / hover_only_ui_component
+  - existing playerprefs_for_save_data: referenced_by に ADR-0005 追記 + Input rebinding 拡張明記
+- GDD sync 完了: `design/gdd/systems-index.md` #1 Input System を ADR-0005 確定参照に更新
+
+## Current Session State — ADR-0004 Save Data System 起草完了（Proposed/S1-S6）
+
+- Skill: `/architecture-decision save-data-system` Phase 0-7 完了
+- 4 設計判断確認済（Hybrid trigger / Atomic write + fsync + .bak / Tier 0 ICloudSync stub / Library-agnostic POCO ISaveable）
+- ADR-0004 書込済: `docs/architecture/adr-0004-save-data-system.md`（645 行、38 セクション、Status: Proposed, Validation Gate S1-S6）
+- unity-specialist + technical-director 並列 review 完了 → **15 件 review finding 全適用**
+  - BLOCKING 3: B1 (Teleport API request to ADR-0002 V1) / B2 (SwitchContext request to ADR-0001 R5) / B3 ([RegisterSaveable] only)
+  - HIGH 6: passive service 化 / R-A MEDIUM 化 / analyzer PR1 前倒し / fsync exFAT / ConfigureAwait / link.xml 具体エントリ
+  - MEDIUM 6: link.xml 拡充 / Dictionary 値型制約 / scene precondition / S6 CI gate / event signatures / SettingsSaveable rebinding 形式
+- registry append 14 件完了:
+  - interfaces ×3: save_data_lifecycle / saveable_contract / cloud_sync_contract
+  - performance_budgets ×1: save_io_off_frame (≤100ms typical / 200ms Steam Deck SD)
+  - api_decisions ×4: save_serialization_library / save_atomic_write / save_cloud_sync_strategy / save_trigger_passive_service
+  - forbidden_patterns ×6: playerprefs_for_save_data / binaryformatter_for_save_data / jsonutility_for_save_data / vfx_state_in_save_document / save_waitforcompletion_in_hot_path / explicit_register_saveable
+- GDD sync 完了: `design/gdd/systems-index.md` A5 セクションを ADR-0004 確定参照に更新
 
 ## Outstanding Tasks（次セッション以降）
 
-- ADR-0004 review finding 15 件適用 → S1-S5 検証 → Accepted 昇格
-- ADR-0005 Game State Machine 起草（main の review で ADR-0005 と命名されたが、実際の番号は ADR-0005 で OK）
-- ADR-0006 Input System / ADR-0007 Class Abilities 起草
-- ADR-0001 R5 spike の Accepted 昇格判定（main の prototypes/r5-class-switch-spike/ を再評価）
-- ADR-0002 V1 revise: `ICharacterMotor.Teleport(Vector2, Facing)` API 追加（B1 解消）
-- ADR-0001 R5 revise: `SwitchContext { PlayerInput, SystemRestore, NarrativeForced }` 追加（B2 解消）
+### ADR-0004 を Accepted に昇格させるための前提
+- **ADR-0002 V1 revise: `ICharacterMotor.Teleport(Vector2 position, Facing facing)` API 追加**（B1 解消）
+- **ADR-0001 R5 revise: `SwitchContext { PlayerInput, SystemRestore, NarrativeForced }` enum + `SwitchTo(ClassDefinition, SwitchContext)` overload 追加**（B2 解消）
+- ADR-0001 R5 spike の実行（template `production/qa/evidence/r5-class-switch-spike-result.md` を実値で埋める）
+- ADR-0004 Validation Gate S1-S6 検証
+
+### 次の ADR 候補（user 提示済み Foundation Blocking 残 2 件）
+- **ADR-0005 Input System Architecture**（Foundation 起点、TR-input-001/002/003）
+- **ADR-0006 Game State Machine**（A3 申し送り解消、Loading 状態所有 / save trigger orchestration）
+
+### Tier 1 / Tier 2a で扱う作業
+- ADR-0004 Tier 0 PR1-3 実装（Foundation + Saveable 実装 + CI gate）
+- ADR-0007 Class Abilities Architecture（IVFXPublisher 参照 + AbilityContext.Motor）
+- ADR-XXXX Steam Integration（Tier 2a で SteamCloudSync : ICloudSync 注入）
