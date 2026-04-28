@@ -171,3 +171,16 @@
 - ADR-0004 Tier 0 PR1-3 実装（Foundation + Saveable 実装 + CI gate）
 - ADR-0007 Class Abilities Architecture（IVFXPublisher 参照 + AbilityContext.Motor）
 - ADR-XXXX Steam Integration（Tier 2a で SteamCloudSync : ICloudSync 注入）
+
+---
+
+## Session Extract — /architecture-review 2026-04-28
+
+- **Mode**: coverage
+- **Verdict**: 🟡 CONCERNS（前回 36% → 71% カバレッジ大幅改善）
+- **Requirements**: 31 registered（前回 25 + 今回 +6）— 22 ✅ / 2 ⚠️ / 7 ❌
+- **New TR-IDs registered**: TR-save-001, TR-save-002, TR-classswitch-005, TR-classswitch-006, TR-vfx-001, TR-vfx-002
+- **GDD revision flags**: game-concept.md line 236 (Unity 6 LTS → 6.3 LTS), line 333 (R-T3 0.4ms → 0.7-0.8ms) — 前回検出のまま open
+- **Top ADR gaps**: ADR-0006 Camera System / ADR-0007 Combo Input Buffer / ADR-0008 Class Abilities System
+- **Report**: docs/architecture/architecture-review-2026-04-28.md
+- **Files updated**: tr-registry.yaml (v2 → v3), traceability-index.md, architecture-review-2026-04-28.md (new)

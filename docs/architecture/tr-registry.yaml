@@ -24,8 +24,8 @@
 #
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
-version: 2
-last_updated: "2026-04-27"
+version: 3
+last_updated: "2026-04-28"
 
 # Registered: 25 MVP-tier requirements from /architecture-review 2026-04-27
 # Source GDDs: design/gdd/game-concept.md, design/gdd/systems-index.md
@@ -242,15 +242,62 @@ requirements:
     revised: ""
     status: active
 
-# ── Future entries (NOT registered yet, 15 candidates) ──
-# These appeared in the 2026-04-27 review but were deferred per user direction
-# (MVP-only registration). They will be appended when corresponding GDDs are authored:
+  # ── Save Data System (additional, registered 2026-04-28 after ADR-0004) ──
+  - id: TR-save-001
+    system: save
+    gdd: design/gdd/game-concept.md
+    requirement: "schemaVersion + マイグレーションチェーン（互換性破壊なしの前進的移行）"
+    created: 2026-04-28
+    revised: ""
+    status: active
+
+  - id: TR-save-002
+    system: save
+    gdd: design/gdd/game-concept.md
+    requirement: ".bak 1 世代バックアップ（書込中クラッシュ耐性）"
+    created: 2026-04-28
+    revised: ""
+    status: active
+
+  # ── Class Switch System (additional, registered 2026-04-28) ──
+  - id: TR-classswitch-005
+    system: classswitch
+    gdd: design/gdd/game-concept.md
+    requirement: "4 職目追加がコードゼロで可能（Pillar 4 / ScriptableObject ドリブン）"
+    created: 2026-04-28
+    revised: ""
+    status: active
+
+  - id: TR-classswitch-006
+    system: classswitch
+    gdd: design/gdd/systems-index.md
+    requirement: "三分割（ClassDefinition / ClassStateMachine / SpriteLibrary）の枠組み（A1 申し送り）"
+    created: 2026-04-28
+    revised: ""
+    status: active
+
+  # ── VFX System (registered 2026-04-28 after ADR-0003 Accepted-pending) ──
+  - id: TR-vfx-001
+    system: vfx
+    gdd: design/gdd/systems-index.md
+    requirement: "IVFXPublisher pub/sub サービス（Core 層 / zero deps、cue ベース API）"
+    created: 2026-04-28
+    revised: ""
+    status: active
+
+  - id: TR-vfx-002
+    system: vfx
+    gdd: design/gdd/game-concept.md
+    requirement: "切替時 0.1-0.2 秒の放射状グラデーション Color Wash（Animated Quad + Sprite_ColorWash.shadergraph）"
+    created: 2026-04-28
+    revised: ""
+    status: active
+
+# ── Future entries (NOT registered yet) ──
+# These appeared in the 2026-04-27 review but remain deferred until corresponding
+# GDDs are authored:
 #
-#   TR-save-001 (schemaVersion + migration chain)
-#   TR-save-002 (.bak 1 generation backup)
 #   TR-cc2d-006 (Determinism for replay/speedrun)
-#   TR-classswitch-005 (4 jobs added with zero code change — Tier 3)
-#   TR-classswitch-006 (Three-way split scaffolding — covered by ADR-0001 + future ADR-0004)
 #   TR-abilities-004 (Balance verification script — Tier 1)
 #   TR-combat-003 (HP / damage calculation — VS scope, Health & Damage System)
 #   TR-gamestate-001 (Title/Playing/Paused/GameOver FSM)
@@ -261,8 +308,6 @@ requirements:
 #   TR-audio-001 (AudioMixer Snapshot switching)
 #   TR-audio-002 (SE pooling / BGM zone-based)
 #   TR-audio-003 (IAudioPublisher service)
-#   TR-vfx-001 (IVFXPublisher pub/sub)
-#   TR-vfx-002 (Class switch radial gradient)
 #   TR-perf-002 (Memory / VRAM / Draw Calls budgets)
 #   TR-loc-001 (Localization discipline from MVP day 1)
 #   TR-steam-001 (Steamworks.NET integration)
