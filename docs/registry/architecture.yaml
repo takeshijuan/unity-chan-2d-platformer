@@ -30,7 +30,50 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-27"
+last_updated: "2026-04-28"
+
+# ─── ARCHITECTURAL STANCES ───────────────────────────────────────────────────
+# Cross-cutting architectural decisions that span multiple ADRs.
+# Conflicts: an ADR introducing a stance that contradicts an existing one =
+# inconsistent project-wide architecture.
+#
+# Register a stance when an ADR establishes a pattern that other ADRs must
+# follow OR explicitly opt out of with rationale.
+
+architectural_stances:
+  - id: foundation_singleton_pattern
+    status: proposed
+    description: |
+      MVP 段階の Foundation 5 ADR (ADR-0001 ClassStateMachine / ADR-0002 CharacterController2D /
+      ADR-0003 VFXPublisherService / ADR-0004 SaveDataService / ADR-0005 InputService) は
+      すべて MonoBehaviour + DontDestroyOnLoad + Static Instance + interface (公開) の
+      Singleton-like access pattern を統一採用する。
+
+      Rationale:
+        - MVP scope 圧縮（DI コンテナ未導入、ScriptableObject Service Locator 等の代替なし）
+        - Tier 1 で DI 統一リファクタを再評価するための共通 baseline 確保
+        - test 容易性は interface 経由 mock injection で部分的に確保
+
+      Concrete pattern:
+        - public sealed class FooService : MonoBehaviour, IFooService { ... }
+        - [DefaultExecutionOrder(N)] で Awake 順制御（SaveDataService=-100、InputService=-90 等）
+        - public static IFooService Instance { get; private set; }
+        - Awake で Instance = this; DontDestroyOnLoad(gameObject);
+        - 他 system は interface 経由で access（IFooService inject か Instance 経由か選択可）
+        - Editor 用 ServiceLocator.Get<T>() で reflection-scanned Saveable 等が Foundation
+          サービスを resolve（直接 InputService.Instance 等具象呼出は禁止せず容認）
+
+      Future revisit: Tier 1 で VContainer / Zenject 等 DI コンテナ導入を再評価。
+      その時点で本 stance を superseded_by: ARCH-XXXX に変更し、新 ADR で DI 統一仕様を確定。
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    referenced_by:
+      - docs/architecture/adr-0001-class-switch-architecture.md
+      - docs/architecture/adr-0002-character-controller-motor.md
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+      - docs/architecture/adr-0004-save-data-system.md
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -112,6 +155,28 @@ state_ownership:
     added: 2026-04-27
     revised: ""
 
+  - state: vfx_pool_state
+    status: proposed
+    owner_system: vfx-system
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    interface: "VFXPublisherService 内部の Dictionary<VfxCueDefinition, Stack<PooledVfxInstance>>（per-cue 利用可能インスタンスプール）+ Dictionary<VfxCueDefinition, int>（active count for MaxConcurrent enforcement）。外部 read 不可、IVFXPublisher 経由でのみ間接操作"
+    write_access: vfx-system-only
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - state: vfx_cue_handles
+    status: proposed
+    owner_system: vfx-system
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    interface: "VFXPublisherService 内部の Dictionary<int, PooledVfxInstance>（active VfxHandle id → instance map）。SpawnCue で発行された VfxHandle.Id を経由した Cancel / MoveTo / IsAlive のみ外部から操作可能、直接 read 不可"
+    write_access: vfx-system-only
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
 # Example:
 #
 # state_ownership:
@@ -146,14 +211,15 @@ interfaces:
     consumers:
       - hud
       - ability-executor
-      - vfx-system-future
+      - vfx-system   # confirmed by ADR-0003 (was vfx-system-future placeholder)
       - audio-system-future
     adr: docs/architecture/adr-0001-class-switch-architecture.md
     signal_signature: "ClassChanged(ClassDefinition newClass) — C# event Action<ClassDefinition>; also exposed as UnityEvent<ClassDefinition> for inspector-driven hooks"
     referenced_by:
       - docs/architecture/adr-0001-class-switch-architecture.md
+      - docs/architecture/adr-0003-vfx-system-boundary.md
     added: 2026-04-27
-    revised: ""
+    revised: 2026-04-27   # vfx-system-future → vfx-system 確定参照化
 
   - contract: motor_intent_command
     status: proposed
@@ -186,7 +252,7 @@ interfaces:
     consumers:
       - ability-executor
       - animator-driver
-      - vfx-system-future
+      - vfx-system   # confirmed by ADR-0003 (was vfx-system-future placeholder)
       - audio-system-future
     adr: docs/architecture/adr-0002-character-controller-motor.md
     signal_signature: |
@@ -199,7 +265,194 @@ interfaces:
       `Grounded` event は廃案 — Landed(Vector2) で着地検出は十分、IsGrounded プロパティとの命名衝突回避
     referenced_by:
       - docs/architecture/adr-0002-character-controller-motor.md
+      - docs/architecture/adr-0003-vfx-system-boundary.md
     added: 2026-04-27
+    revised: 2026-04-27   # vfx-system-future → vfx-system 確定参照化（ADR-0003）
+
+  - contract: vfx_publisher
+    status: proposed
+    pattern: direct_call
+    producer: any-gameplay-system
+    consumers:
+      - vfx-system
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    signal_signature: |
+      IVFXPublisher methods (synchronous, hot-path budget ≤ 0.2ms / call, 0-byte GC alloc):
+        PlayCue(VfxCueDefinition cue, in VfxCueArgs args) : void
+            — fire-and-forget. caller does not own lifetime. cold-miss は silent drop + counter
+        SpawnCue(VfxCueDefinition cue, in VfxCueArgs args) : VfxHandle
+            — persistent / cancellable cue（burning aura 等）。VfxHandle は Cancel / MoveTo / IsAlive を提供
+        SubscribeMotorEvents(ICharacterMotor motor) : void
+            — Tier 1 wiring。motor の Landed → dust_landed cue、HitstopApplied → hitstop_freeze_frame cue を自動 bind
+      VfxCueArgs is readonly struct (WorldPos / AttachTo / Direction / TintOverride / ScaleMult)
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: vfx_cue_definition
+    status: proposed
+    pattern: shared_resource
+    producer: vfx-system
+    consumers:
+      - any-gameplay-system   # 各 system は VfxCueDefinition を SerializeField で参照して PlayCue に渡す
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    signal_signature: |
+      VfxCueDefinition is ScriptableObject (one asset per cue under assets/vfx/cues/):
+        CueId : string                          — debug only, not used as runtime key
+        PrefabRef : AssetReferenceGameObject    — Addressables async load
+        MaxConcurrent : int                     — per-cue cap (anti-spam)
+        DefaultLifetimeSec : float              — Watchdog timeout = DefaultLifetimeSec * 1.5
+        PreloadOnSceneLoad : bool               — hot cue は true 必須（cold-miss 回避）
+        Layer : VfxLayer { World, Overlay, UI } — sorting hint
+        Overflow : OverflowPolicy { DropOldest, DropNewest }
+        AttachPolicy : AttachPolicy { WorldSpace, AttachToTransform }
+      Designer は SO asset 作成のみで cue 追加可能（コード編集不要）
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: save_data_lifecycle
+    status: proposed
+    pattern: direct_call
+    producer: game-state-machine   # ADR-0005 future が trigger orchestration 所管
+    consumers:
+      - save-data-system           # SaveAll / LoadAll を受ける passive service
+    adr: docs/architecture/adr-0004-save-data-system.md
+    signal_signature: |
+      ISaveDataService methods (async, off-frame I/O):
+        SaveAllAsync(int slot, CancellationToken) : Task<SaveLifecycleEventArgs>
+            — caller must await; .Result / .Wait() 禁止 (Unity SynchronizationContext deadlock)
+        LoadAllAsync(int slot, CancellationToken) : Task<SaveLifecycleEventArgs>
+            — gameplay scene loaded precondition (R-I); 違反時 SaveSequenceException throw
+      Events (subscribers: ADR-0005 UI / ADR-0006 rebinding confirm):
+        SaveCompleted(SaveLifecycleEventArgs) : Action<>
+        LoadCompleted(SaveLifecycleEventArgs) : Action<>
+      SaveLifecycleEventArgs: { Slot, Success, Error, Duration }
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: saveable_contract
+    status: proposed
+    pattern: direct_call
+    producer: any-gameplay-system   # 各 system が ISaveable 実装
+    consumers:
+      - save-data-system           # SaveDataService が reflection scan で発見・呼出
+    adr: docs/architecture/adr-0004-save-data-system.md
+    signal_signature: |
+      ISaveable (library-agnostic POCO contract):
+        SectionId : string                — "player" / "world" / "settings" / "meta"
+        SchemaVersion : int               — current schema version this saveable produces
+        Capture() : SaveSection           — read-only API 経由で snapshot 生成
+        Restore(SaveSection) : void       — 復元、scene-loaded 前提
+
+      Registration: [RegisterSaveable(loadOrder)] attribute + reflection scan ONLY.
+      Explicit Register() / DI 注入は forbidden (cyclic asmdef 防止)。
+
+      SaveSection POCO:
+        SectionId : string
+        SchemaVersion : int
+        Data : Dictionary<string, object> — primitive / string / bool / List<T> /
+                                            Dictionary<string,T> / [Serializable] POCO のみ
+                                            Vector2/Vector3/Color の object 直接格納禁止
+                                            （JObject に化けて Get<T> が silent default を返す）
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: cloud_sync_contract
+    status: proposed
+    pattern: direct_call
+    producer: save-data-system
+    consumers:
+      - cloud-sync-impl            # Tier 0: NullCloudSync, Tier 2a: SteamCloudSync (別 asmdef)
+    adr: docs/architecture/adr-0004-save-data-system.md
+    signal_signature: |
+      ICloudSync (Tier 0 から interface 配備、実装は Tier 2a 注入):
+        IsAvailable : bool
+        UploadAsync(slotKey, byte[] data, CancellationToken) : Task
+        DownloadAsync(slotKey, CancellationToken) : Task<byte[]>
+        GetRemoteTimestampAsync(slotKey, CancellationToken) : Task<DateTime?>
+
+      Tier 0 default: NullCloudSync (no-op, IsAvailable=false)
+      Tier 2a: SteamCloudSync : ICloudSync (Steamworks.NET ISteamRemoteStorage、Game.SteamCloud.asmdef)
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - contract: input_service_lifecycle
+    status: proposed
+    pattern: direct_call
+    producer: game-state-machine    # ADR-0006 future が SetActiveMap orchestration
+    consumers:
+      - input-system                # InputService が SetActiveMap 受信、Action Map 切替実施
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    signal_signature: |
+      IInputService methods:
+        ActiveMaps : ActionMapId (read-only) — bit flags の現在 active map set
+        LastUsedDevice : InputDeviceKind (read-only) — 最終 input device
+        SetActiveMap(ActionMapId maps) : void
+            — replace active map flags; not in flags の map は disable
+            — Game State Machine (ADR-0006) の唯一 routing 入口
+        EnableMap(ActionMapId map) : void  — map を active set に追加
+        DisableMap(ActionMapId map) : void — map を active set から削除
+        SaveBindings(SaveSection section) : void
+            — rebinding overrides を SettingsSaveable 経由で永続化（ADR-0004 連携）
+            — 内部: _controls.SaveBindingOverridesAsJson() を Data["rebinding"] 格納
+        RestoreBindings(SaveSection section) : void
+            — section から rebinding overrides を復元
+            — Awake 順序 race 対策の null check 内蔵
+      Events:
+        ActiveDeviceChanged(InputDeviceKind) : Action<>
+            — last-used device 変化時 (Gamepad ↔ Keyboard) 発火、UI が glyph swap 用に subscribe
+
+      ActionMapId enum (bit flags, [System.Flags]):
+        None = 0, Gameplay = 1, UI = 2, Pause = 4, Dialogue = 8
+        値は ADR-0006 が継承 redefine 不可、Tier 1 で Cinematic = 16 等を append のみ可能
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
+
+  - contract: input_event_stream
+    status: proposed
+    pattern: csharp_event
+    producer: input-system
+    consumers:
+      - combo-input-buffer        # systems-index #9
+      - class-switch-system       # ADR-0001 SwitchTo input handler
+      - character-controller-2d   # ADR-0002 motor input (via ability layer)
+      - ability-executor          # ADR-0007 future
+      - ui-system                 # IUIInputProxy 経由（ADR-0006 確定後）
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    signal_signature: |
+      IInputEventStream:
+        InputReceived(InputEvent) : Action<>
+            — global input event stream、全 InputAction の started/performed/canceled を配信
+        Subscribe(string actionName, Action<InputEvent> handler) : void
+            — specific action 専用購読（convenience）
+        Unsubscribe(string actionName, Action<InputEvent> handler) : void
+            — OnEnable / OnDisable pair で必須
+
+      InputEvent (readonly struct):
+        ActionName : string         — "attack" / "class_switch_left" 等 snake_case
+        Phase : InputPhase enum     — Started / Performed / Canceled
+        Timestamp : float           — (float)CallbackContext.time, double 精度（M3 fix）
+        Value : float               — analog action 値
+        Vector2Value : Vector2      — Vector2 action 値
+        Device : InputDeviceKind    — Keyboard / Mouse / Gamepad
+        BindingIndex : int          — primary / alt binding 識別、-1 ガード済み（M2 fix）
+
+      Forbidden: gameplay code から InputAction.performed += を直接 subscribe 禁止
+                  （direct_inputaction_subscribe forbidden）
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
     revised: ""
 
 # Example:
@@ -268,6 +521,100 @@ performance_budgets:
     added: 2026-04-27
     revised: ""
 
+  - system: vfx-system
+    metric: vfx_publisher_play_cue
+    status: proposed
+    budget_ms: 0.2
+    cycle: per-event
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    notes: |
+      IVFXPublisher.PlayCue hot path budget per event:
+        pool.Pop() / Stack lookup       0.02-0.05ms
+        Transform.position assign       0.01ms
+        ParticleSystem.Play()           0.02-0.05ms
+        ColorWashController.Begin()     0.02ms (class_switch_orb_burst のみ)
+        active count++ / VfxHandle Id   0.01ms
+        ─────────────────────────────────
+        p99 target                      ≤ 0.20ms
+      GC.Alloc target: 0 byte / call (VfxCueArgs is readonly struct, no closure capture).
+      Validation Gate G2: Profiler EditMode で 1000 回 / 60s 連続発火、p99 ≤ 0.2ms 実測。
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - system: vfx-system
+    metric: vfx_total_per_frame
+    status: proposed
+    budget_ms: 1.5
+    cycle: Update + LateUpdate (per-frame)
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    notes: |
+      Steam Deck 1080p worst-case VFX rendering envelope:
+        Active emitters update (20 active)        ~0.5ms
+        Color Wash quad fragment shader           ~0.1-0.3ms
+        Pool dequeue / spawn (worst frame, 9 events) ~0.5ms (= 9 × 0.05ms PlayCue overhead)
+        ─────────────────────────────────────────────
+        target                                    ≤ 1.5ms
+      Project rendering budget（technical-preferences.md）は 6ms total。VFX は 1/4 envelope。
+      Validation Gate G5: Steam Deck 実機で boss scene + 20 emitter で実測。
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - system: save-data-system
+    metric: save_io_off_frame
+    status: proposed
+    budget_ms: 100
+    cycle: off-frame (pause UI / loading screen / save point interaction)
+    adr: docs/architecture/adr-0004-save-data-system.md
+    notes: |
+      Save Data I/O は 16.6ms frame budget の対象外。pause UI / loading screen / save point
+      interaction の文脈でのみ実行。async Task<>、ConfigureAwait(false)、メインスレッドブロック
+      しない設計を強制。
+
+      Targets:
+        Save (typical 50-200KB)             ≤ 100ms
+        Save (Steam Deck SD card exFAT)     ≤ 200ms
+        Load (cold)                         ≤ 300ms (loading screen 中)
+        Migration chain (per step)          ≤ 50ms
+        Steam Cloud upload (async, fire-forget) non-blocking
+
+      Validation Gate S5 + S6: Steam Deck 実機 + IL2CPP CI build で実測。
+      GC alloc: VfxCueArgs と異なり Save 経路は I/O オフフレームのため緩和（数十 KB 許容）。
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - system: input-system
+    metric: input_poll_per_frame
+    status: proposed
+    budget_ms: 0.3
+    cycle: Update phase (per-frame)
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    notes: |
+      Input poll + InputEvent dispatch + SetActiveMap state transition の合算 budget。
+      technical-preferences.md "Update loop ≤ 4ms" envelope の 1/13。
+
+      Targets (Tier 0 / Tier 1):
+        Input poll (Update phase)              0.05 / 0.10 ms
+        InputEvent dispatch (per event)        0.02 / 0.02 ms
+        SetActiveMap (state transition)        0.05 / 0.05 ms
+        ─────────────────────────────────────────
+        per-frame total                        ≤ 0.30 ms
+
+      Memory: PlayerControls instance ~50 KB (Tier 0) / ~80 KB (Tier 1)
+      GC.Alloc: 0 byte / InputEvent (struct) per dispatch
+
+      Rebinding (interactive) は I/O-blocking、frame budget 対象外（UI flow）。
+      Validation Gate I5: Steam Deck 実機 (1080p) で実測。
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
+
 # Example:
 #
 # performance_budgets:
@@ -320,6 +667,140 @@ api_decisions:
     added: 2026-04-27
     revised: ""
     notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
+
+  - purpose: vfx_particle_backbone
+    status: proposed
+    api: "Legacy ParticleSystem (UnityEngine.ParticleSystem) — IVFXPublisher 抽象越しに将来 VFX Graph 移行可能"
+    not: "VFX Graph (UnityEngine.VFX) を Tier 1 で primary backbone にしない / Hybrid backbone （hero=VFX Graph + cheap=Legacy）構成"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "Unity 6.3 で Legacy ParticleSystem は deprecated 表示だが機能は維持、削除時期未公表。VFX Graph は URP 2D Output Particle Sprite 統合に caveats（Sub-emitter / Trail Renderer 2D 連携不足）、現スコープ（20 emitter）に対して GPU/compute は overkill。IVFXPublisher 抽象により後日 cue 単位で backbone swap 可能なので将来移行を阻害しない。"
+    revisit_trigger: "Unity 6.4 LTS が Legacy ParticleSystem の削除予告アナウンスを出した時点 / VFX Graph URP 2D 統合の caveats 解消時"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: vfx_color_wash_technique
+    status: proposed
+    api: "CinemachineBrain 直下の Animated Quad（child Transform）+ Sprite_ColorWash.shadergraph（_RadialCenter Vector2 / _Progress 0..1 / _BaseColor Color プロパティ）、Sorting Layer 'VFX_Overlay'（World < VFX_Overlay < UI Canvas の順）"
+    not: "Camera.OnRenderImage() （URP 6.3 で動作不可）/ ScriptableRendererFeature + RenderGraph custom pass（学習コスト過大）/ Volume framework Color Adjustments override（放射状グラデーション不可）/ Per-sprite tint のみ（Pillar 1 報酬感不足）"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "art-bible.md に既存 custom shader budget として Sprite_ColorWash.shadergraph が枠取り済み（line 1592）。Animated Quad アプローチは Render Pipeline カスタマイズ不要、Steam Deck で 0.1-0.3ms、HUD マスクは Sorting Layer で除外（脆弱な render-pass exclusion 不要）。art-bible.md line 1077-1079 の `Render Texture マスク` 表現は本決定で supersede。"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: vfx_cold_miss_policy
+    status: proposed
+    api: "Silent drop + Debug.Log warning [Conditional UNITY_EDITOR] + ColdMissCount[cue] counter increment。hot cue は VfxCueDefinition.PreloadOnSceneLoad = true を契約化"
+    not: "Addressables.WaitForCompletion() で同期 stall / queue → load 完了後の delayed fire"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "Pillar 1 の 1-frame 視覚同期を最優先。WaitForCompletion は初回 10-50ms hitch、queue は stale な visual feedback で入力同期破綻。silent drop はプロファイラで検出可能、CI smoke test で「playable scene 5 anchor cue で cold-miss = 0」をアサート可能。"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: vfx_addressables_key_form
+    status: proposed
+    api: "AssetReferenceGameObject in VfxCueDefinition (ScriptableObject SerializeField)"
+    not: "enum VfxCueId（cue 追加でコード編集必須）/ string addressable key（typo がコンパイル通過、Find References 不能）"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    reason: "型安全性 + Find References 動作 + refactor-rename 動作 + デザイナーが SO asset 作成のみで cue 追加可能（コード編集不要）。technical-preferences.md「Magic numbers — ScriptableObject に配置」と同思想。"
+    referenced_by:
+      - docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: save_serialization_library
+    status: proposed
+    api: "Newtonsoft.Json for Unity (com.unity.nuget.newtonsoft-json) + Application.persistentDataPath"
+    not: "Unity JsonUtility（Dictionary 不可 / polymorphism 不可）/ BinaryFormatter（.NET 8 deprecated + security risk）/ MessagePack-Csharp / Odin Serializer（商用ライセンス）/ PlayerPrefs（Steam Cloud 同期外、Windows Registry 依存）"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    reason: "technical-preferences.md line 82 で採用確定、polymorphism / Dictionary / 人間可読 JSON / debug 容易性が要件。IL2CPP は link.xml で対応（Implementation Guideline §10）。"
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: save_atomic_write
+    status: proposed
+    api: "tmp file write → FileStream.Flush(flushToDisk: true) → File.Replace(tmp, dest, bak) で .bak 1 世代退避"
+    not: "直接上書き (atomic でない) / .bak のみ (tmp なし、書込中クラッシュで save corruption) / 多世代バックアップ (.bak1/.bak2/.bak3、scope 過剰)"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    reason: "POSIX rename / NTFS MoveFileEx は atomic、exFAT (Steam Deck SD カード) は journaling 無しで非 atomic だが Flush(flushToDisk: true) で電源断耐性を補完。R-T5「.bak 1 世代」要件充足。"
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: save_cloud_sync_strategy
+    status: proposed
+    api: "Tier 0: ICloudSync interface + NullCloudSync default. Tier 2a: SteamCloudSync : ICloudSync を Game.SteamCloud.asmdef 別 assembly で注入"
+    not: "Tier 0 から実 Steamworks.NET 直接統合（CI ヘッドレスでテスト不可、MVP scope 圧迫）/ Cloud sync 抽象を ADR-0004 で省略（Tier 2a refactor 不可避）"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    reason: "Steamworks.NET は technical-preferences.md「将来検討（Tier 2a Demo 時）」記載。interface 抽象を Tier 0 から導入することで Save layer のリファクタゼロで Tier 2a 拡張可能。"
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: save_trigger_passive_service
+    status: proposed
+    api: "SaveDataService は SaveAll(slot) / LoadAll(slot) / SaveCompleted / LoadCompleted のみ提供、trigger orchestration ゼロ責任"
+    not: "SaveDataService が Save Point / Zone Transition / Quit イベントを subscribe / SaveDataService から Game State Machine を直接呼出"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    reason: "依存方向の単一化: Game State Machine (ADR-0005) → Save Data System の direct_call 1 方向のみ。逆方向 / 双方向は cyclic 化リスク。Save 関連 UX は Game State 側で完結。"
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+    revised: ""
+
+  - purpose: input_system_library
+    status: proposed
+    api: "com.unity.inputsystem 1.8+ (Unity 6.3 LTS 同梱版) のみ採用"
+    not: "Legacy Input Manager (UnityEngine.Input.*) / Rewired (商用) / Steamworks.NET ISteamInput を Tier 0 で直接統合 / PlayerInput component の Send Messages mode (magic string)"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    reason: "engine-reference/breaking-changes.md line 38-50 で Legacy Input は Unity 6 で deprecated。technical-preferences.md line 77 で `com.unity.inputsystem` 採用確定。Steam Input 専用 API は Tier 2a で別 ADR + Game.SteamInput.asmdef 別 assembly で注入予定。"
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
+
+  - purpose: action_asset_workflow
+    status: proposed
+    api: "PlayerControls.inputactions Action Asset + Generated C# class workflow ('Generate C# Class' Inspector option)。1 Action Asset に 4 Action Maps (Gameplay / UI / Pause / Dialogue) + 2 Control Schemes (KeyboardMouse / Gamepad)"
+    not: "PlayerInput component の Send Messages / Invoke C# Events mode（magic string / Inspector binding 依存）"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    reason: "Generated C# class は型安全 (Find References / refactor-rename 動作) + magic string 不在。technical-preferences.md 記載の Action Rebinding UI 必須要件は Generated class の `_controls.SaveBindingOverridesAsJson()` で完全充足。Inspector binding mode は prefab merge conflict 耐性低。"
+    revisit_trigger: "com.unity.inputsystem 2.0 系で Action Asset format が breaking change した場合"
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
+
+  - purpose: input_event_timestamp
+    status: proposed
+    api: "InputAction.CallbackContext.time (double, Time.realtimeSinceStartup ベース) を InputEvent.Timestamp に (float) cast 採用"
+    not: "Time.unscaledTime（Update frame 開始時刻、同 frame 内全 event が同値で順序判定不能）/ Time.time（Time.timeScale=0 で停止、pause 中の Combo Buffer で誤動作）/ DateTime.Now / Stopwatch（GC alloc / overhead）"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    reason: "ctx.time は Input System の per-event 内部 clock、frame 内多重 event の順序判定が可能。pause 中（Time.timeScale=0）でも進む wall-clock 系。Combo Input Buffer (#9) の 4-6f 先行入力判定 + 同 frame de-dup の両方を満たす。"
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
+
+  - purpose: action_map_routing
+    status: proposed
+    api: "Game State Machine (ADR-0006) が IInputService.SetActiveMap(ActionMapId) を呼出、4 Action Maps を bit flags で一括切替。ActionMapId enum: None=0 / Gameplay=1 / UI=2 / Pause=4 / Dialogue=8 ([System.Flags])"
+    not: "gameplay code が直接 _controls.Gameplay.Disable() を呼出 / Game State 切替時に PlayerControls の null 代入で全体 reset / Action Map ごとの個別 GameObject に component を attach する分散管理"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    reason: "routing 一元化により bleed-through 検証が SetActiveMap 1 点に集約、I1 Validation Gate で実測可能。bit flags で複数 map 同時 enable（Pause + UI 等）が単一 API で表現可能。enum 値は ADR-0006 が継承し redefine 不可（互換性確保）。"
+    referenced_by:
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+    revised: ""
 
 # Example:
 #
@@ -380,6 +861,122 @@ forbidden_patterns:
     why: "Unity 6.3 で Physics2D.autoSyncTransforms は deprecated（6.5 で削除予定）。明示呼出により Box2D v3 マルチスレッド環境で「MovePosition → SyncTransforms → 次 Cast クエリ」の sequence を制御可能、race を回避できる。docs/engine-reference/unity/breaking-changes.md および deprecated-apis.md 参照。"
     adr: docs/architecture/adr-0002-character-controller-motor.md
     added: 2026-04-27
+
+  - pattern: vfx_writes_motor_state
+    status: proposed
+    description: "VFX System が ICharacterMotor の状態（Position / Velocity / IsGrounded / Facing / State）を直接 write してはいけない。VFX は motor の event notification を subscribe するのみで、state mutation は禁止。"
+    why: "ADR-0002 で確定した motor write authority の排他性（character-controller-2d-only）を維持し、replay 安全性（gameplay state の決定論性）を保つ。VFX が motor 状態を mutate すると particle seed の非決定性が gameplay に漏れる。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_camera_onrenderimage
+    status: proposed
+    description: "Camera.OnRenderImage() を使った post-effect（Color Wash 含む）の実装を禁止。"
+    why: "Unity 6.3 で URP Compatibility Mode が完全削除されたため、URP 2D Renderer で Camera.OnRenderImage は呼ばれない。art-bible.md line 1077-1079 の `Render Texture マスク` 旧仕様は ADR-0003 で Sorting Layer 'VFX_Overlay' + Animated Quad アプローチに supersede。docs/engine-reference/unity/breaking-changes.md (lines 154-167) 参照。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_renderpipeline_compatibilitymode
+    status: proposed
+    description: "URP Compatibility Mode (`UniversalRenderPipelineGlobalSettings.enableRenderCompatibilityMode = true`) の使用を禁止。RenderGraph API ベースの新パターンを使うこと。"
+    why: "Unity 6.3 で完全削除済み。enableRenderCompatibilityMode は read-only かつ常に false を返す。Compatibility Mode に依存した render pass / volume effect は機能しない。docs/engine-reference/unity/breaking-changes.md (lines 154-167) 参照。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_synchronous_waitforcompletion
+    status: proposed
+    description: "IVFXPublisher.PlayCue の hot path で Addressables.WaitForCompletion() を呼んではいけない。cold-miss 時は silent drop + counter で対応。"
+    why: "WaitForCompletion は初回ロード時に 10-50ms の frame hitch を引き起こし、Pillar 1「切替が、花になる」1-frame 視覚同期を破壊する。hot cue は VfxCueDefinition.PreloadOnSceneLoad = true で回避、レアな cue は cold-miss 許容（プロファイラで検出可能、CI smoke test で 0 をアサート）。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: vfx_global_pool
+    status: proposed
+    description: "VFX 全体で 1 つのグローバル GameObject Stack を共有する pool 構造を禁止。Per-cue pool（Dictionary<VfxCueDefinition, Stack<PooledVfxInstance>>）を使うこと。"
+    why: "cue ごとに prefab root 構造（ParticleSystem / Trail Renderer / Sub-emitter / SpriteRenderer 構成）が異なるため、グローバル pool は reset コストが高くバグの温床。typed bucket（per-cue pool）と運用上等価で API もクリーンに保てる。"
+    adr: docs/architecture/adr-0003-vfx-system-boundary.md
+    added: 2026-04-27
+
+  - pattern: playerprefs_for_save_data
+    status: proposed
+    description: "PlayerPrefs.SetInt/SetFloat/SetString による save data 永続化を禁止（settings の volume / language / **Input rebinding 含む**）。Save Data System の SettingsSaveable 経由のみ許可（rebinding は SettingsInputSaveable.Capture が IInputService.SaveBindings 経由で SaveBindingOverridesAsJson() を Data['rebinding'] verbatim 格納）。"
+    why: "PlayerPrefs は Steam Cloud 同期外、Windows Registry 依存で破損しやすい。technical-preferences.md line 65 で forbidden 化。Roslyn analyzer rule で gameplay assembly + Game.Input から build error 化。ADR-0005 で Input domain 拡張、engine-reference/modules/input.md lines 269-275 の旧 `PlayerPrefs.SetString('InputBindings', rebinds)` example を supersede。"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    referenced_by:
+      - docs/architecture/adr-0004-save-data-system.md
+      - docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-27
+    revised: 2026-04-28   # ADR-0005 で Input rebinding を含むことを明記、referenced_by 追記
+
+  - pattern: binaryformatter_for_save_data
+    status: proposed
+    description: "System.Runtime.Serialization.Formatters.Binary.BinaryFormatter を save data 用途で使用してはいけない。全面禁止。"
+    why: ".NET 8 で deprecated（CA2300 SecurityException）、デシリアライズ時の任意コード実行 security risk、grep / diff 不能でデバッグ困難、schema migration が手動オフセット計算で fragile。"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+
+  - pattern: jsonutility_for_save_data
+    status: proposed
+    description: "Unity 標準 JsonUtility.ToJson / FromJson を save data 用途で使ってはいけない。Newtonsoft.Json for Unity (com.unity.nuget.newtonsoft-json) のみ採用。"
+    why: "JsonUtility は Dictionary<,> 直接非対応 / polymorphism 不可 / [SerializeReference] でも circular ref 不可。Save Data の section-based JSON（player/world/settings/meta）と rebinding（Input Actions JSON polymorphic struct）が成立しない。"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+
+  - pattern: vfx_state_in_save_document
+    status: proposed
+    description: "SaveSection.Data に vfx_pool_state / vfx_cue_handles / VfxHandle.Id 等 VFX 内部状態を含めてはいけない。VFX は gameplay state から replay 派生する。"
+    why: "ADR-0003 が VFX を replay-safe としたため、save に永続化すると (a) cancelled cue が load 後に蘇る、(b) VfxHandle.Id は process-local で別 process では invalid、(c) particle 内部状態は非決定的で replay 不再現。Save Data 復元時は ICharacterMotor.Teleport / ClassStateMachine.SwitchTo の SystemRestore 経由で gameplay 状態のみ復元、VFX は scene の通常起動経路で発火。"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+
+  - pattern: save_waitforcompletion_in_hot_path
+    status: proposed
+    description: "SaveDataService.SaveAll / LoadAll の hot path で Addressables.WaitForCompletion() / Task.Result / Task.Wait() を呼んではいけない。async/await + ConfigureAwait(false) のみ許可。"
+    why: "Unity SynchronizationContext は single-threaded のため Task.Result / Wait() は deadlock 確実。WaitForCompletion は初回ロード時に 10-50ms hitch、メインスレッドブロックで frame skip。Save / Load は I/O off-frame envelope だがメインスレッドブロックは UI freeze として観測される。"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+
+  - pattern: explicit_register_saveable
+    status: proposed
+    description: "ISaveable を SaveDataService に登録する方法は [RegisterSaveable] attribute + reflection scan のみ許可。明示的 SaveDataService.Register(ISaveable) 呼出 / DI コンテナ注入は禁止。"
+    why: "Game.Core.asmdef (ISaveable) → Game.Gameplay.asmdef (実装) → Game.Persistence.asmdef (登録) の triangle が cyclic asmdef 化するリスク。reflection scan + attribute による IoC で循環依存を構造的に防止（B3 fix from TD-ADR review）。LoadOrder は attribute parameter で制御可能。"
+    adr: docs/architecture/adr-0004-save-data-system.md
+    added: 2026-04-27
+
+  - pattern: legacy_input_class_usage
+    status: proposed
+    description: "UnityEngine.Input.GetKey / GetKeyDown / GetMouseButton / GetAxis / Input.mousePosition 等の Legacy Input class 全面禁止。com.unity.inputsystem 1.8+ の InputAction / IInputEventStream のみ使用可。"
+    why: "Unity 6 で Legacy Input class は deprecated（engine-reference/breaking-changes.md line 38-50、deprecated-apis.md line 10-20）。技術選定として Input System Package が確定（technical-preferences.md line 77）。Roslyn analyzer rule で Game.* assembly から build error 化、Assets/Plugins/ThirdParty/ は除外。"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+
+  - pattern: playerprefs_for_binding
+    status: proposed
+    description: "Input System の rebinding 永続化に PlayerPrefs を使用してはいけない。SettingsInputSaveable 経由（ADR-0004 SaveSection）で永続化のみ許可。"
+    why: "ADR-0004 forbidden `playerprefs_for_save_data` の Input domain 拡張。engine-reference/modules/input.md lines 269-275 の `PlayerPrefs.SetString('InputBindings', rebinds)` example は本 ADR で supersede。Steam Cloud 同期外、Windows Registry 依存で破損しやすい。Roslyn analyzer rule で gameplay assembly + Game.Input から build error 化。"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+
+  - pattern: magic_string_action_name
+    status: proposed
+    description: "PlayerInput component の 'Send Messages' / 'Broadcast Messages' Behavior mode 禁止。Generated C# class ('Generate C# Class' Inspector option) + 型安全な action access のみ採用。"
+    why: "Send Messages mode は magic string method 名（'OnAttack' / 'OnJump' 等）に依存し typo がコンパイル通過、runtime fail。Find References 不能、refactor 安全性ゼロ、IL2CPP で reflection-based dispatch のパフォーマンス hit。長期メンテナンスプロジェクトに不適。"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+
+  - pattern: direct_inputaction_subscribe
+    status: proposed
+    description: "gameplay assembly (Game.Gameplay / Game.UI 等) から InputAction.performed / .started / .canceled に直接 subscribe してはいけない。IInputEventStream.InputReceived event または IInputEventStream.Subscribe(actionName, handler) 経由のみ許可。"
+    why: "直接 subscribe は gameplay code を Unity Input System にタイトに結合させ、Action 名変更で gameplay code 大量修正、Combo Input Buffer (#9) 等の中間層を bypass、unit test に Input System mock 必須化。IInputEventStream 抽象で疎結合 + 同等性能を実現。Roslyn analyzer rule で `Game.Gameplay.asmdef` 内の `InputAction.performed +=` を build error 化。"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
+
+  - pattern: hover_only_ui_component
+    status: proposed
+    description: "UI component が IPointerEnterHandler を implements する場合、必ず ISelectHandler または ISubmitHandler も implements すること。例外は [GamepadAccessibilityExempt] attribute を付与した component のみ（Tooltip / drag handle / scroll indicator / context menu hover preview 等）。"
+    why: "technical-preferences.md line 23 で「ホバー専用インタラクションは禁止」「全 UI は d-pad/スティック で操作可能」と確定。Steam Deck Verified 申請の必須拘束。Roslyn analyzer rule で Game.UI / Game.Gameplay assembly から build error 化、`[GamepadAccessibilityExempt]` で明示的 opt-out のみ許容（PR review 必須）。"
+    adr: docs/architecture/adr-0005-input-system-architecture.md
+    added: 2026-04-28
 
 # Example:
 #
