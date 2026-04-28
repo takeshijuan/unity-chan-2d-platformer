@@ -139,7 +139,7 @@ VFX は Class Switch / Combat / Orb Acquisition / Boss / UI Notification すべ�
 | 4 | Scene & Addressables Manager | Core | Vertical Slice | Not Started | — | Game State Machine |
 | 5 | Audio System | Audio | Vertical Slice | Not Started | — | Game State Machine |
 | 6 | CharacterController2D | Core | MVP | Not Started | — | Input System |
-| 7 | Camera System | Core | MVP（単一シーン） / VS（multi-room） | Not Started | — | CharacterController2D, Scene & Addressables (VS) |
+| 7 | Camera System | Core | MVP（単一シーン） / VS（multi-room） | Provisional (ADR-0006, C0-C1 + R1 spike pending) | — | CharacterController2D (ADR-0002), Scene & Addressables (VS) |
 | 8 | Tilemap & World Geometry | Gameplay | Vertical Slice | Not Started | — | Scene & Addressables Manager |
 | 9 | Combo Input Buffer | Gameplay | MVP | Not Started | — | Input System |
 | 10 | Class Switch System | Gameplay | MVP | Not Started | — | Input System, Game State Machine |

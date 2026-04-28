@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-28"
+last_updated: "2026-04-28"   # ADR-0006 Camera System provisional: camera_follow_minimal interface 追加 + motor_position referenced_by 更新
 
 # ─── ARCHITECTURAL STANCES ───────────────────────────────────────────────────
 # Cross-cutting architectural decisions that span multiple ADRs.
@@ -106,8 +106,9 @@ state_ownership:
     write_access: character-controller-2d-only
     referenced_by:
       - docs/architecture/adr-0002-character-controller-motor.md
+      - docs/architecture/adr-0006-camera-system.md   # Camera follow source (Locked Decision 2, ADR-0006 provisional)
     added: 2026-04-27
-    revised: ""
+    revised: 2026-04-28   # ADR-0006 Camera System provisional の referenced_by 追加
     notes: "API 名は ADR-0002 Validation Gate V1 通過後に確定 revise"
 
   - state: motor_velocity
@@ -418,6 +419,33 @@ interfaces:
       - docs/architecture/adr-0005-input-system-architecture.md
     added: 2026-04-28
     revised: ""
+
+  - contract: camera_follow_minimal
+    status: proposed
+    pattern: direct_call
+    producer: any-gameplay-system   # Game State Machine future / scene bootstrap が SetFollowTarget / SetConfiner を呼出
+    consumers:
+      - camera-system               # ADR-0006 provisional 実装が API を提供
+    adr: docs/architecture/adr-0006-camera-system.md
+    signal_signature: |
+      Minimal camera surface (provisional, post-R1 spike refinement target):
+        SetFollowTarget(ICharacterMotor motor) : void
+            — Camera follow target source binding。Cinemachine への transform bridge 実装方式は
+              R1 spike + ADR-0002 V1 通過後に follow-up ADR で確定（CharacterFollowProxy /
+              ICharacterMotor.TransformReadProxy 提案 / 他案）
+        SetConfiner(Collider2D boundingShape) : void
+            — MVP は単一 PolygonCollider2D を CinemachineConfiner2D.BoundingShape2D に Inspector
+              アサイン直接設定でも可、API 形式は VS multi-room 対応時の room transition 仕様確定後
+              に extend
+      Full ICameraDirector surface (FixedPoint / Composite / RequestShake* / CancelAllShakes /
+      CameraMoved / Snapshot) は **deferred** — ADR-0006 D4 で follow-up ADR に持ち越し
+      （observability API は CinemachineBrain.OutputCamera.transform 経由再設計、shake API は
+       CinemachineImpulseSource backing model 確定後）。
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+    added: 2026-04-28
+    revised: ""
+    notes: "本 entry は ADR-0006 thin provisional に対応。follow-up ADR で full ICameraDirector surface 確定時に supersede 予定"
 
   - contract: input_event_stream
     status: proposed
