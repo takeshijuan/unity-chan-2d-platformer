@@ -89,16 +89,16 @@
 ## Architecture Decisions Log
 
 <!-- Quick reference linking to full ADRs in docs/architecture/ -->
-- [No ADRs yet — use /architecture-decision to create one]
 
-Primary ADR候補（`/create-architecture` で生成予定の Required ADR List）:
-- ADR-001: Unity 6.3 LTS 採用根拠
-- ADR-002: URP 2D Renderer 採用（Built-in RP は不採用）
-- ADR-003: 2D Skeletal Animation 採用（Sprite Sheet 方式は不採用）
-- ADR-004: 職業切替アーキテクチャ（ScriptableObject + ClassStateMachine + SpriteLibrary）
-- ADR-005: セーブシステム（Newtonsoft.Json + schemaVersion + Steam Cloud）
-- ADR-006: Kinematic CharacterController2D 自作（Unity 2D 標準物理は不採用）
-- ADR-007: アートパイプライン 案C Hybrid（公式素材 + AI 装飾差分のみ）
+- [ADR-0001](docs/architecture/adr-0001-class-switch-architecture.md): 職業切替アーキテクチャ（ScriptableObject + ClassStateMachine + SpriteLibrary）
+- [ADR-0002](docs/architecture/adr-0002-character-controller-motor.md): Kinematic CharacterController2D 自作（Unity 2D 標準物理は不採用）
+- [ADR-0003](docs/architecture/adr-0003-vfx-system-boundary.md): VFXシステム境界
+- [ADR-0004](docs/architecture/adr-0004-save-data-system.md): セーブシステム（Newtonsoft.Json + schemaVersion + Steam Cloud）
+- [ADR-0005](docs/architecture/adr-0005-input-system-architecture.md): Input System アーキテクチャ
+- [ADR-0006](docs/architecture/adr-0006-camera-system.md): カメラシステム（Cinemachine 3 + 2D Confiner）
+- [ADR-0007](docs/architecture/adr-0007-combo-input-buffer.md): Combo Input Buffer（Ring Buffer + IComboBuffer + ScriptableObject Window）
+- [ADR-0008](docs/architecture/adr-0008-class-abilities-system.md): Class Abilities System（ClassAbilityData + AbilityContext + HitConfirmed event）
+- [ADR-0009](docs/architecture/adr-0009-combat-system.md): Combat System（HitConfirmed → IDamageReceiver Thin Mediator）
 
 ## Engine Specialists
 
