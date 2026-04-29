@@ -1,9 +1,10 @@
 # Architecture Traceability Index
 
-**Last Updated**: 2026-04-28
+**Last Updated**: 2026-04-29
 **Engine**: Unity 6.3 LTS (6000.3.x)
 **Source Reviews**:
-- [architecture-review-2026-04-28-v2.md](architecture-review-2026-04-28-v2.md) — coverage mode (latest, ADR-0006 反映)
+- [architecture-review-2026-04-29.md](architecture-review-2026-04-29.md) — coverage mode (latest, ADR-0007/0008/0009 反映、🟢 PASS)
+- [architecture-review-2026-04-28-v2.md](architecture-review-2026-04-28-v2.md) — coverage mode (ADR-0006 反映)
 - [architecture-review-2026-04-28.md](architecture-review-2026-04-28.md) — coverage mode (ADR-0005 まで)
 - [architecture-review-2026-04-27.md](architecture-review-2026-04-27.md) — initial full review
 
@@ -13,12 +14,12 @@
 
 | Status | Count | % |
 |---|---|---|
-| ✅ Covered | 23 | 74% |
-| ⚠️ Partial | 3 | 10% |
-| ❌ Gap | 5 | 16% |
+| ✅ Covered | 29 | 94% |
+| ⚠️ Partial | 1 | 3% |
+| ❌ Gap | 1 | 3% |
 | **Total registered** | **31** | 100% |
 
-> 抽出範囲: 29 システムのうち MVP 9 システム + 主要 VS システムの「architectural-decision-implying」要件のみ。実装詳細・コンテンツ要件は除外。31 件全件が `tr-registry.yaml` に登録済（2026-04-28 で +6 件: TR-save-001/002, TR-classswitch-005/006, TR-vfx-001/002）。残 deferred 15 件は VS / Polish / Cross-cutting で GDD authoring 時に追加登録予定。ADR-0006 thin provisional 反映で TR-camera-002 → ✅ / TR-camera-001 → ⚠️ 昇格。
+> 抽出範囲: 29 システムのうち MVP 9 システム + 主要 VS システムの「architectural-decision-implying」要件のみ。実装詳細・コンテンツ要件は除外。31 件全件が `tr-registry.yaml` に登録済。残 deferred 15 件は VS / Polish / Cross-cutting で GDD authoring 時に追加登録予定。2026-04-29: ADR-0007/0008/0009 反映で TR-combo-001/002 / TR-abilities-001 / TR-combat-002 ❌→✅、TR-abilities-002 / TR-combat-001 ⚠️→✅ 昇格。MVP architectural coverage 達成（🟢 PASS）。
 
 ---
 
@@ -54,8 +55,8 @@
 | TR-classswitch-006 | systems-index.md A1 | Class Switch | 三分割の枠組み | ADR-0001 | ✅ |
 | TR-camera-001 | game-concept.md | Camera | Cinemachine 3 + 2D Confiner | ADR-0006 部分 | ⚠️ |
 | TR-camera-002 | game-concept.md | Camera | `ICharacterMotor.Position` follow | ADR-0006 | ✅ |
-| TR-combo-001 | game-concept.md Core Mech 4 | Combo Input Buffer | 先行入力 4-6 フレーム | — | ❌ |
-| TR-combo-002 | game-concept.md Core Mech 4 | Combo Input Buffer | 空中キャンセル | — | ❌ |
+| TR-combo-001 | game-concept.md Core Mech 4 | Combo Input Buffer | 先行入力 4-6 フレーム | ADR-0007 | ✅ |
+| TR-combo-002 | game-concept.md Core Mech 4 | Combo Input Buffer | 空中キャンセル / 職業跨ぎ | ADR-0007 | ✅ |
 | TR-vfx-001 | systems-index.md A4 | VFX System | `IVFXPublisher` pub/sub | ADR-0003 | ✅ |
 | TR-vfx-002 | game-concept.md Visual P3 | VFX System | 切替放射状グラデーション | ADR-0003 | ✅ |
 
@@ -63,11 +64,11 @@
 
 | TR-ID | GDD | System | Requirement | ADR | Status |
 |---|---|---|---|---|---|
-| TR-abilities-001 | game-concept.md Core Mech 2 | Class Abilities | 剣士/弓士/魔法使い/4 職目 | — | ❌ |
-| TR-abilities-002 | systems-index.md A1 | Class Abilities | 三分割（Data/Executor/Context） | ADR-0001 部分 | ⚠️ |
-| TR-abilities-003 | systems-index.md A2 | Class Abilities | 意図 API のみ叩く | ADR-0002 | ✅ |
-| TR-combat-001 | game-concept.md Pillar 3 | Combat | hitstop + knockback + impact frame | ADR-0002 部分 | ⚠️ |
-| TR-combat-002 | systems-index.md CD2 | Combat | Tier 0 HP=1 dummy + 3 点 | — | ❌ |
+| TR-abilities-001 | game-concept.md Core Mech 2 | Class Abilities | 剣士/弓士/魔法使い/4 職目 | ADR-0008 | ✅ |
+| TR-abilities-002 | systems-index.md A1 | Class Abilities | 三分割（Data/Executor/Context） | ADR-0001 + ADR-0008 | ✅ |
+| TR-abilities-003 | systems-index.md A2 | Class Abilities | 意図 API のみ叩く | ADR-0002 + ADR-0008 | ✅ |
+| TR-combat-001 | game-concept.md Pillar 3 | Combat | hitstop + knockback + impact frame | ADR-0002 + ADR-0009 | ✅ |
+| TR-combat-002 | systems-index.md CD2 | Combat | Tier 0 HP=1 dummy + 3 点 | ADR-0009 | ✅ |
 | TR-enemyai-001 | game-concept.md MVP | Enemy AI | Tier 0: 1 ダミー / VS: 3-4 archetype | — | ❌ |
 
 ---
@@ -83,27 +84,23 @@ Status: Proposed (Validation Gate C0-C1)
 - C1: ADR-0002 V1 通過後、1-frame sync 30/60/120Hz × 50Hz physics matrix
 Follow-up: ADR-0006a で deferred 11 件（Body component / Damping / Foundation Singleton 適用 / ICameraDirector full surface / Camera Shake routing / TransformReadProxy / Pixel Perfect / Crop Frame / 6 anchor shake profiles / performance budgets / forbidden patterns 残 3 件）を R1 + R5 + V1 spike empirical data ベースで lock
 
-#### ADR-0007 候補: Combo Input Buffer
-覆う TR-IDs: TR-combo-001, TR-combo-002
-依存: ADR-0002 V9 (`LockHorizontalControl` 中の Jump Buffer 消費規則) + ADR-0005 timestamp 配信を引用
-Suggested skill: `/architecture-decision combo-input-buffer`
+#### ADR-0007 Combo Input Buffer ✅ 起草完了（2026-04-29 反映）
+覆う TR-IDs: TR-combo-001 ✅ / TR-combo-002 ✅
+Status: Proposed (Validation Gate CB0-CB7、ADR-0005 I0-I5 通過後に連動検証)
 
-#### ADR-0008 候補: Class Abilities System 詳細
-覆う TR-IDs: TR-abilities-001, TR-abilities-002（partial → full に昇格）
-依存: ADR-0001 Accepted 後
-Suggested skill: `/architecture-decision class-abilities-system`
+#### ADR-0008 Class Abilities System ✅ 起草完了（2026-04-29 反映）
+覆う TR-IDs: TR-abilities-001 ✅ / TR-abilities-002 ✅
+Status: Proposed (Validation Gate CA0-CA8、ADR-0001/0002/0003/0007 全通過後に連動検証)
 
-### Medium Priority
-
-#### ADR-0009 候補: Combat System Tier 0 minimal scope
-覆う TR-IDs: TR-combat-001（partial → full）, TR-combat-002
-依存: ADR-0002 経由で Hitstop/Knockback、systems-index.md CD2
-Suggested skill: `/architecture-decision combat-system-tier0`
+#### ADR-0009 Combat System ✅ 起草完了（2026-04-29 反映）
+覆う TR-IDs: TR-combat-001 ✅ / TR-combat-002 ✅
+Status: Proposed (Validation Gate CS0-CS5、ADR-0008 CA0-CA8 通過後に連動検証)
+副次: `IDamageReceiver` を `Game.Core` に確定 → 将来の TR-health-001（VS 期 #13 GDD）に contract 提供済
 
 ### Low Priority（VS 期で再評価可能）
 
-#### ADR-0010+ 候補: Enemy AI / Game State Machine / Scene & Addressables / Audio System
-基準: VS 期（5-6 ヶ月）以降の起草で十分
+#### ADR-0010+ 候補: Enemy AI / Game State Machine / Scene & Addressables / Audio System / Health & Damage System
+基準: VS 期（5-6 ヶ月）以降の起草で十分。MVP では DummyEnemy (ADR-0009) で TR-enemyai-001 を機能代替。
 
 ---
 
@@ -156,4 +153,5 @@ Suggested skill: `/architecture-decision combat-system-tier0`
 |---|---|---|---|
 | 2026-04-27 | 🟡 CONCERNS | 36% Covered / 13% Partial / 51% Gap (39 reqs total) | Initial review |
 | 2026-04-28 | 🟡 CONCERNS | 71% Covered / 6% Partial / 23% Gap (31 registered) | ADR-0003/0004/0005 確定後の coverage 再集計、TR registry +6 件 |
-| 2026-04-28 (v2) | 🟡 CONCERNS | **74% Covered / 10% Partial / 16% Gap (31 registered)** | ADR-0006 thin provisional 反映、TR-camera-002 ✅ / TR-camera-001 ⚠️、registry 変更なし |
+| 2026-04-28 (v2) | 🟡 CONCERNS | 74% Covered / 10% Partial / 16% Gap (31 registered) | ADR-0006 thin provisional 反映、TR-camera-002 ✅ / TR-camera-001 ⚠️、registry 変更なし |
+| **2026-04-29** | **🟢 PASS** | **94% Covered / 3% Partial / 3% Gap (31 registered)** | ADR-0007/0008/0009 反映、TR-combo-001/002 + TR-abilities-001 + TR-combat-002 ❌→✅、TR-abilities-002 + TR-combat-001 ⚠️→✅。残 ⚠️ TR-camera-001（R1 spike 待ち）/ ❌ TR-enemyai-001（VS 期 defer、MVP は DummyEnemy で代替）。MVP architectural coverage 達成 |
