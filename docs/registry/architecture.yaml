@@ -30,7 +30,7 @@
 #   Superseded entries:     Grep pattern="status: superseded"
 
 version: 1
-last_updated: "2026-04-28"   # ADR-0006 Camera System provisional: camera_follow_minimal interface 追加 + motor_position referenced_by 更新
+last_updated: "2026-04-29"   # ADR-0009 Combat System: damage_receiver_contract + combat-system budget + 2 api_decisions + 1 forbidden_pattern 追加。motor_intent_command.consumers に combat-system を昇格
 
 # ─── ARCHITECTURAL STANCES ───────────────────────────────────────────────────
 # Cross-cutting architectural decisions that span multiple ADRs.
@@ -178,6 +178,30 @@ state_ownership:
     added: 2026-04-27
     revised: ""
 
+  - state: combo_buffer_state
+    status: proposed
+    owner_system: combo-input-buffer
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    interface: "IComboBuffer — TryConsume(actionName: string): bool（最新未消費エントリを消費、Latest-first セマンティクス） / Flush(): void（全クリア、Game State Machine のみ呼出）。内部の _actionNames[] / _timestamps[] / _consumed[] 配列は外部不可視、IComboBuffer 経由のみアクセス"
+    write_access: combo-input-buffer-only
+    referenced_by:
+      - docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+    revised: ""
+    notes: "ClassStateMachine (ADR-0001) は職業間受け渡し確認に TryConsume を使用。AbilityExecutor (ADR-0008) は TryConsume で消費。Flush は Game State Machine のみ呼出（forbidden_pattern: flush_on_non_gsm_caller）。ExecutionOrder: consumers は > -80 に設定すること（ADR-0007 R11）"
+
+  - state: ability_executor_execution_state
+    status: proposed
+    owner_system: ability-executor
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    interface: "IAbilityExecutor — Initialize(AbilityContext): void（依存注入）/ Configure(ClassAbilityData[]): void（クラス切替時の ability 差替え）/ HasCapability(AbilityCapability): bool（Gate & Lock 判定）。内部の _currentAbility / _currentFrame / _currentAbilityIdx は外部不可視、IAbilityExecutor 経由のみアクセス"
+    write_access: ability-executor-only
+    referenced_by:
+      - docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
+    revised: ""
+    notes: "ClassStateMachine (ADR-0001) は Configure(ClassAbilityData[]) 経由で ability set を差し替える。HitConfirmed event で Combat System に衝突情報を渡す。ExecutionOrder -60（ADR-0007 R11: ComboInputBuffer -80 より後）"
+
 # Example:
 #
 # state_ownership:
@@ -228,18 +252,18 @@ interfaces:
     producer: ability-executor
     consumers:
       - character-controller-2d
+      - combat-system  # ADR-0009: ApplyHitstop(HitstopSec) を攻撃側 motor に呼出（HitConfirmed callback から）
     adr: docs/architecture/adr-0002-character-controller-motor.md
     signal_signature: |
       ICharacterMotor methods (synchronous, FixedUpdate-deferred):
         RequestImpulse(Vector2 impulse)                      — 1 frame additive
         OverrideGravity(float multiplier, float durationSec) — multiplier 後勝ち、durationSec max 合成
         LockHorizontalControl(float durationSec)             — 長い方優先で合成
-        ApplyHitstop(float durationSec)                      — 自身 Solver 停止 (CD1 Tier 0 内蔵)
+        ApplyHitstop(float durationSec)                      — 自身 Solver 停止 (CD1 Tier 0 内蔵)。Mathf.Max 合成で二重呼出しも安全
         SetFacing(Facing direction)                          — 向き強制
     additional_consumers_future:
-      - combat-system        # ノックバック (RequestImpulse) / 被ダメ硬直 (LockHorizontalControl) / Hitstop
       - class-switch-system  # 切替 invariant 維持時の SetFacing / 状態 read のみ
-      - enemy-ai-future      # 敵側で同 motor 抽象を再利用候補
+      - enemy-ai-future      # 敵側で同 motor 抽象を再利用候補（Tier 1 EnemyController）
     referenced_by:
       - docs/architecture/adr-0002-character-controller-motor.md
     added: 2026-04-27
@@ -483,6 +507,105 @@ interfaces:
     added: 2026-04-28
     revised: ""
 
+  - contract: combo_buffer_query
+    status: proposed
+    pattern: direct_call
+    producer: combo-input-buffer
+    consumers:
+      - ability-executor          # TryConsume("attack") 等で先行入力消費
+      - class-switch-system       # TryConsume で職業間受け渡し確認
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    signal_signature: |
+      IComboBuffer methods (synchronous, O(16) = O(1), 0 byte GC alloc):
+        TryConsume(string actionName) : bool
+            — window 内の最新未消費エントリを consumed=true にして true 返す。なければ false
+            — Latest-first セマンティクス: 同一アクション連打時は最新 Timestamp のエントリを消費
+            — 1 回の呼出で最大 1 エントリを消費する（複数エントリがあっても最新のみ）
+        Flush() : void
+            — 全エントリをクリア（death / respawn / level reset）
+            — クラス切替時は呼ばない（職業間受け渡しのため）
+            — Game State Machine のみ呼出すこと（forbidden_pattern: flush_on_non_gsm_caller）
+    referenced_by:
+      - docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+    revised: ""
+
+  - contract: ability_hit_contract
+    status: proposed
+    pattern: csharp_event
+    producer: ability-executor
+    consumers:
+      - combat-system        # HitData.SourceAbility.Damage / HitstopSec / KnockbackImpulse を直接読む (D1)
+      - vfx-system           # HitData.WorldPosition / HitNormal で hit VFX を発火
+      - audio-system-future  # HitData.SourceAbility.SfxOnHit cue で hit SE を再生
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    signal_signature: |
+      AbilityExecutor C# event:
+        HitConfirmed(HitData hitData) : event Action<HitData>
+            — 1 ability execution 中に同一 Collider2D への重複発火なし (_hitThisExecution HashSet で保証)
+            — Physics2D.OverlapBoxNonAlloc で検出した valid hit 1 件ごとに 1 回発火
+      HitData (readonly struct, Game.Core.asmdef):
+        WorldPosition   : Vector2          — hit 点ワールド座標
+        ActionName      : string           — "attack" 等
+        HitNormal       : Vector2          — AttackerFacing の Vector2 化（+1/-1 x 成分）。OverlapBoxNonAlloc の接触法線ではない。knockback 方向 = HitNormal * KnockbackImpulse
+        HitCollider     : Collider2D       — 被攻撃側コライダー
+        SourceAbility   : ClassAbilityData — D1: Combat System が Damage / HitstopSec 等を直接読む
+        AttackerFacing  : Vector2          — D1: ノックバック方向 (+1/-1 の Facing を Vector2 化)
+    referenced_by:
+      - docs/architecture/adr-0008-class-abilities-system.md
+      - docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
+    revised: 2026-04-29   # ADR-0009 referenced_by 追加, HitNormal は AttackerFacing であることを明記
+
+  - contract: damage_receiver_contract
+    status: proposed
+    pattern: direct_call
+    producer: combat-system
+    consumers:
+      - dummy-enemy           # Tier 0: DummyEnemy.TakeDamage（1-hit disable + linearVelocity knockback）
+      - health-component      # Tier 1: HealthComponent.TakeDamage（HP 減算 + RequestImpulse + HealthChanged event）
+      - boss-future           # ボス等の specialized enemy が IDamageReceiver 実装
+    adr: docs/architecture/adr-0009-combat-system.md
+    signal_signature: |
+      IDamageReceiver (interface, Game.Core.asmdef, Game.Core.Combat namespace):
+        TakeDamage(float damage, Vector2 knockbackImpulse) : void
+            — damage: ベースダメージ値（Tier 0 DummyEnemy は無視、Tier 1 HealthComponent が防御計算）
+            — knockbackImpulse: HitNormal * ClassAbilityData.KnockbackImpulse（CombatSystem が算出済み）
+            — knockbackImpulse == Vector2.zero の場合はノックバックなし（ボス戦フェーズ等に使用可）
+            — 呼出元: CombatSystem.OnHitConfirmed のみ（per-hit 1 回、GetComponent 経由）
+      Tier 0 DummyEnemy 実装:
+        _rb.linearVelocity = knockbackImpulse  — Rigidbody2D.linearVelocity 直代入（Tier 0 のみ）
+        gameObject.SetActive(false)            — 1-hit KO
+      Tier 1 HealthComponent 実装:
+        CurrentHp -= damage                    — 防御値計算は Health & Damage System ADR で規定
+        _motor.RequestImpulse(knockbackImpulse) — ICharacterMotor 経由（external_motor_state_write 準拠）
+        HealthChanged event 発火               — HUD 更新
+    referenced_by:
+      - docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
+    revised: ""
+
+  - contract: ability_capability_query
+    status: proposed
+    pattern: direct_call
+    producer: ability-executor
+    consumers:
+      - level-gate-system    # Gate & Lock: HasCapability(AbilityCapability.Dash) でゲート開閉判定
+      - class-switch-system  # クラス切替時に新クラスの HasCapability を UI ヒント表示に使用
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    signal_signature: |
+      IAbilityExecutor methods (synchronous, O(n) where n ≤ 8 abilities):
+        HasCapability(AbilityCapability capability) : bool
+            — 現クラスの ClassAbilityData[] 全 ability の Capabilities flags を OR した結果で判定
+            — [Flags] enum: AbilityCapability { None=0, Dash=1<<0, DoubleJump=1<<1,
+                             WallCling=1<<2, HighJump=1<<3, GroundPound=1<<4 }
+            — Configure(ClassAbilityData[]) 後に即座に新クラスの capability を返す
+    referenced_by:
+      - docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
+    revised: ""
+    notes: "Gate & Lock レベルデータ（将来 ADR）は AbilityCapability enum 値で開閉条件を記述。string HasAbility 方式は forbidden（ability_string_action_name_gate 参照）"
+
 # Example:
 #
 # interfaces:
@@ -641,6 +764,70 @@ performance_budgets:
     referenced_by:
       - docs/architecture/adr-0005-input-system-architecture.md
     added: 2026-04-28
+    revised: ""
+
+  - system: combo-input-buffer
+    metric: combo_buffer_per_frame
+    status: proposed
+    budget_ms: 0.1
+    cycle: Update phase (per-frame) + per-event (OnInputReceived)
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    notes: |
+      内訳:
+        OnInputReceived (per InputEvent): array write O(1)        ≤ 0.01 ms
+        Update pruning: O(16) linear scan                         ≤ 0.05 ms
+        TryConsume (per call): O(16) linear scan                  ≤ 0.02 ms / call
+        ─────────────────────────────────────────────────────────
+        per-frame total (worst case 3 calls)                      ≤ 0.10 ms
+      GC.Alloc target: 0 byte（ring buffer は固定長配列、struct アクセスのみ）
+      技術詳細: 16-entry ring buffer。window 外エントリを Update で null set（dealloc なし）。
+      3並列配列はすべてアトミックに操作すること（R10）。
+    referenced_by:
+      - docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+    revised: ""
+
+  - system: combat-system
+    metric: combat_system_per_hit
+    status: proposed
+    budget_ms: 0.05
+    cycle: per-event (HitConfirmed callback, not per-frame)
+    adr: docs/architecture/adr-0009-combat-system.md
+    notes: |
+      内訳 (per HitConfirmed event):
+        GetComponent<IDamageReceiver>()        ~0.01-0.03 ms  (Tier 0 per-hit 1 回、許容)
+        ApplyHitstop(float)                    ≤ 0.01 ms  (O(1))
+        IDamageReceiver.TakeDamage dispatch    ≤ 0.01 ms  (O(1))
+        ────────────────────────────────────────────────
+        per-hit total                          ≤ 0.05 ms
+      Update() なし（event-driven のみ）、per-frame overhead = 0。
+      GC.Alloc target: 0 byte（GetComponent はキャッシュなし Tier 0 許容、event dispatch は delegate invoke のみ）
+      Tier 1 で per-execution multi-hit が増えた場合は Awake() キャッシュ方式で GetComponent を排除予定。
+    referenced_by:
+      - docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
+    revised: ""
+
+  - system: ability-executor
+    metric: ability_executor_per_frame
+    status: proposed
+    budget_ms: 0.2
+    cycle: Update phase (per-frame)
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    notes: |
+      内訳 (worst case: 3 ability polling + 1 active execution with hitbox):
+        PollForNewAbility (3 ability × IsStateValid + TryConsume)  ≤ 0.05 ms
+        TickCurrentAbility (frame counter + cancel window check)   ≤ 0.02 ms
+        Physics2D.OverlapBoxNonAlloc (1 call, 8-slot pre-alloc)    ≤ 0.10 ms
+        HitConfirmed event dispatch (1 hit × subscribers ≤ 5)      ≤ 0.02 ms
+        Animator.SetTrigger(int hash) at ability start             ≤ 0.01 ms
+        ────────────────────────────────────────────────────────
+        per-frame total (worst case)                               ≤ 0.20 ms
+      GC.Alloc target: 0 byte（Collider2D[] pre-allocated in Awake、HashSet<Collider2D> cleared on StartAbility）
+      OverlapBoxNonAlloc は HitboxActiveStartFrame ≤ _currentFrame ≤ HitboxActiveEndFrame の frame のみ呼出
+    referenced_by:
+      - docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
     revised: ""
 
 # Example:
@@ -830,6 +1017,61 @@ api_decisions:
     added: 2026-04-28
     revised: ""
 
+  - purpose: combo_buffer_window_config
+    status: proposed
+    api: "ComboInputBufferSettings (ScriptableObject) の BufferWindowSec フィールドで設定（デフォルト 0.083s ≒ 5f at 60fps、Range 0.05-0.20s）"
+    not: "コード内マジックナンバー（const float BufferWindow = 0.083f 等）/ PlayerPrefs での設定保存"
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    reason: "technical-preferences.md「Magic numbers — ScriptableObject に配置、コードハードコード禁止」に従う。デザイナーがコード変更なしにコンボウィンドウを調整可能にするため。Capacity=16 はコード定数のまま（変更にはコード変更が必要なため SO 化は偽の柔軟性）。"
+    referenced_by:
+      - docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+    revised: ""
+
+  - purpose: ability_audioPublisher_cue_pattern
+    status: proposed
+    api: "IAudioPublisher.PlayCue(AudioCueDefinition cue, AudioCueArgs args) — AudioCueDefinition は ScriptableObject (空の Tier 0 placeholder)、AudioCueArgs は readonly struct (WorldPosition: Vector2)"
+    not: "IAudioPublisher.PlaySfx(string key, Vector2 pos)（string key は ActionName coupling）/ AudioSource.PlayOneShot(AudioClip) 直接呼出（IVFXPublisher 抽象 bypass）"
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    reason: "ADR-0003 の IVFXPublisher.PlayCue(VfxCueDefinition, VfxCueArgs) パターンを Audio domain に対称適用。AudioCueDefinition SO 参照方式はデザイナーが cue 追加可能（コード変更不要）。将来の Audio System ADR が AudioCueDefinition 内容を自由に設計できる forward-compat。NullAudioPublisher.Instance（no-op singleton）が Tier 0 で interface を充足。"
+    referenced_by:
+      - docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
+    revised: ""
+
+  - purpose: ability_capability_flags
+    status: proposed
+    api: "AbilityCapability [Flags] enum (Game.Core.asmdef): None=0 / Dash=1<<0 / DoubleJump=1<<1 / WallCling=1<<2 / HighJump=1<<3 / GroundPound=1<<4。IAbilityExecutor.HasCapability(AbilityCapability) で Gate & Lock 判定"
+    not: "IAbilityExecutor.HasAbility(string actionName)（職業固有 ActionName と Gate & Lock 機能分類の不一致リスク）/ bool フラグ per-ability（enum bits の方が比較・シリアライズが単純）"
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    reason: "D2 決定: Gate & Lock レベルデータが ActionName ではなく機能分類（Dash）で開閉判定するため。[Flags] enum は型安全 + コンパイル時検証。4 職目追加時に ClassAbilityData.Capabilities = AbilityCapability.Dash を設定するだけでゲート開閉が機能する（コード変更ゼロ）。"
+    referenced_by:
+      - docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
+    revised: ""
+
+  - purpose: hitstop_attacker_delivery
+    status: proposed
+    api: "CombatSystem.OnHitConfirmed が ICharacterMotor.ApplyHitstop(data.SourceAbility.HitstopSec) を呼出す。HitstopSec 値は ClassAbilityData SO フィールド（ADR-0009 R6）"
+    not: "AbilityExecutor が直接 ApplyHitstop を呼出す / HitConfirmed subscriber ごとに ApplyHitstop を独立で呼ぶ（二重適用リスク）"
+    adr: docs/architecture/adr-0009-combat-system.md
+    reason: "CombatSystem が HitConfirmed subscriber の中で唯一 player motor の ApplyHitstop を呼出す権限を持つ（Thin Mediator 決定）。AbilityExecutor は hit confirmation を通知するのみで Hitstop を知らない。VFX System 等の他 subscriber は ApplyHitstop を呼ばない。ADR-0002 の Mathf.Max 合成により同 motor への複数呼出しは安全だが、意図しない呼出しを禁止するため明文化。"
+    referenced_by:
+      - docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
+    revised: ""
+
+  - purpose: dummy_enemy_knockback_api
+    status: proposed
+    api: "Tier 0 DummyEnemy: Rigidbody2D.linearVelocity = knockbackImpulse（直接代入）"
+    not: "Rigidbody2D.AddForce(knockbackImpulse, ForceMode2D.Impulse)（Box2D v3 マルチスレッドで SetActive(false) 同フレーム競合あり）/ Rigidbody2D.velocity（Unity 6.0 で linearVelocity に改名、旧名 [Obsolete]）"
+    adr: docs/architecture/adr-0009-combat-system.md
+    reason: "Unity 6.3 Box2D v3 マルチスレッドでは AddForce の impulse が次 FixedUpdate で処理される前に SetActive(false) を呼ぶと impulse が破棄される場合がある。linearVelocity 直代入は即時反映で競合なし。Tier 0 の throwaway code 専用パターン — Tier 1 以降は ICharacterMotor.RequestImpulse に移行する（enemy_rigidbody_direct_write_tier1 forbidden pattern）。"
+    referenced_by:
+      - docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -1005,6 +1247,55 @@ forbidden_patterns:
     why: "technical-preferences.md line 23 で「ホバー専用インタラクションは禁止」「全 UI は d-pad/スティック で操作可能」と確定。Steam Deck Verified 申請の必須拘束。Roslyn analyzer rule で Game.UI / Game.Gameplay assembly から build error 化、`[GamepadAccessibilityExempt]` で明示的 opt-out のみ許容（PR review 必須）。"
     adr: docs/architecture/adr-0005-input-system-architecture.md
     added: 2026-04-28
+
+  - pattern: flush_combo_buffer_on_class_switch
+    status: proposed
+    description: "クラス切替（ClassStateMachine.SwitchTo）時に IComboBuffer.Flush() を呼んではいけない。職業間受け渡し（class switch 中に先行入力したコンボを次クラスが拾う）が機能しなくなる。Flush は death / respawn / level reset 時に Game State Machine のみが呼出す。"
+    why: "Pillar 3「歯ごたえ」のコンボ継続体験が、職業切替をまたいだ先行入力を前提にしている。ADR-0007 R5 で明示規定。ClassStateMachine が Flush を呼ぶ誘惑は合理的に見えるが、設計意図と反する。"
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+
+  - pattern: flush_on_non_gsm_caller
+    status: proposed
+    description: "IComboBuffer.Flush() を Game State Machine (GSM) 以外から呼ばない。AbilityExecutor / ClassStateMachine / CharacterController2D 等は Flush を呼ぶ権限を持たない。Flush はサイレントなバッファ消滅を引き起こすため、GSM のみが death/respawn/level-reset タイミングで呼出す。"
+    why: "Flush 誤用はプレイヤーの入力が無音で失われるデバッグ困難な障害を引き起こす。IComboBuffer インターフェースに Flush() を残すが、呼び出し権限を単一箇所（GSM）に集約する。#if DEVELOPMENT_BUILD でログ出力し誤用を早期検出。"
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+
+  - pattern: direct_combo_buffer_array_access
+    status: proposed
+    description: "ComboInputBuffer の内部配列（_actionNames[] / _timestamps[] / _consumed[]）に外部から直接アクセスしてはいけない。IComboBuffer interface 経由（TryConsume / Flush）のみ許可。"
+    why: "ADR-0007 が定義する combo_buffer_state の write authority を combo-input-buffer-only に限定するため。外部から consumed フラグを操作すると TryConsume の消費保証が崩れる。"
+    adr: docs/architecture/adr-0007-combo-input-buffer.md
+    added: 2026-04-29
+
+  - pattern: circular_combo_next_reference
+    status: proposed
+    description: "ClassAbilityData.ComboNext が自分自身（A.ComboNext = A）または循環参照（A.ComboNext = B, B.ComboNext = A）を形成してはいけない。ComboNext を辿るループの終端は null（=コンボ終了）のみ。"
+    why: "循環参照はコンボ継続ロジック（TickCurrentAbility の ComboNext チェック）で無限ループを引き起こす。ADR-0008 R6 で ComboNext != _currentAbility の実行時ガードを規定。Unity のオブジェクト比較は == null / != null を使用（is null 禁止、null object equality の Unity MonoBehaviour 挙動差異のため）。"
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
+
+  - pattern: ability_string_action_name_gate
+    status: proposed
+    description: "Gate & Lock レベルデータ（ゲートの開閉条件）に IAbilityExecutor.HasAbility(string actionName) を使ってはいけない。IAbilityExecutor.HasCapability(AbilityCapability) + AbilityCapability [Flags] enum を使うこと。"
+    why: "D2 決定: 職業固有の ActionName（'phase_step' 等）と Gate & Lock の機能分類（Dash）が一致しない場合にゲートが開かない障害が生じる。AbilityCapability enum は職業実装と Gates をデカップリングし、4 職目（ActionName が既存と異なる）の追加をコード変更ゼロで対応可能にする。"
+    adr: docs/architecture/adr-0008-class-abilities-system.md
+    added: 2026-04-29
+
+  - pattern: enemy_rigidbody_direct_write_tier1
+    status: proposed
+    description: "Tier 1 以降の enemy 実装で Rigidbody2D.AddForce / Rigidbody2D.linearVelocity / Rigidbody2D.position 等を直接 write してはいけない。enemy knockback は ICharacterMotor.RequestImpulse 経由（EnemyController : ICharacterMotor 実装）のみ許可。Tier 0 の DummyEnemy.linearVelocity 直代入は throwaway code として明示的に例外扱い。"
+    why: "external_motor_state_write forbidden pattern（ADR-0002）は player motor だけでなく enemy motor にも適用される。ICharacterMotor 抽象を enemy にも適用することで (a) Solver 権威性保証、(b) Box2D v3 マルチスレッド安全性、(c) 状態観測 API（IsGrounded / Velocity 等）の共通化、(d) replay 安全性が enemy にも拡張される。ADR-0009 Migration Plan で Tier 1 移行時の明示的置き換えを規定。"
+    adr: docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
+
+  - pattern: hit_confirmed_non_combat_hitstop
+    status: proposed
+    description: "HitConfirmed event の subscriber（VFX System / Audio System 等）が ICharacterMotor.ApplyHitstop を呼んではいけない。ApplyHitstop の呼出し権限は CombatSystem のみ。"
+    why: "hitstop_attacker_delivery api_decision: CombatSystem が唯一の ApplyHitstop 呼出し元として確定（ADR-0009 Thin Mediator 決定）。VFX / Audio subscriber が独立に ApplyHitstop を呼ぶと、同 motor への複数呼出しが ADR-0002 Mathf.Max で意図せず長い hitstop を生む。デバッグが困難な hit feel 劣化につながる。"
+    adr: docs/architecture/adr-0009-combat-system.md
+    added: 2026-04-29
 
 # Example:
 #

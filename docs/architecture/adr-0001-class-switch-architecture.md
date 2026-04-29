@@ -44,7 +44,7 @@
 | Field | Value |
 |-------|-------|
 | **Depends On** | None（最初の ADR） |
-| **Enables** | ADR-0002（CharacterController2D + ICharacterMotor）、ADR-0003（VFX System Boundary + IVFXPublisher）、ADR-0004（Class Abilities System 詳細） |
+| **Enables** | ADR-0002（CharacterController2D + ICharacterMotor）、ADR-0003（VFX System Boundary + IVFXPublisher）、ADR-0008（Class Abilities System） |
 | **Blocks** | `design/gdd/class-switch-system.md` GDD authoring、`design/gdd/class-abilities-system.md` GDD authoring、`design/gdd/combat-system.md` GDD authoring（Class Abilities 経由で間接依存） |
 | **Ordering Note** | 想定リストの「ADR-004 職業切替アーキテクチャ」（technical-preferences.md 内）は本ファイル ADR-0001 と同一決定。実ファイル番号は `/architecture-decision` の scan-based 採番により ADR-0001。technical-preferences.md の Architecture Decisions Log は本 ADR Accept 後に同期更新する |
 
@@ -440,7 +440,7 @@ R5（SpriteSkin × SpriteLibraryAsset ランタイムスワップ）が偽の場
 - **未来の関連 ADR**:
   - ADR-0002 (planned): CharacterController2D + ICharacterMotor — 本 ADR の AbilityContext で参照される `ICharacterMotor` の確定 ADR
   - ADR-0003 (planned): VFX System Boundary + IVFXPublisher — Tier 1 リファクタの target インターフェース
-  - ADR-0004 (planned): Class Abilities System 詳細 — `ClassAbilityData` / `AbilityExecutor` / `AbilityContext` の細部
+  - ADR-0008: Class Abilities System — `ClassAbilityData` / `AbilityExecutor` / `AbilityContext` の細部
 - **Followup Tasks**:
   - `[Spike]` R5 検証プロトタイプ（本 ADR Validation Gate 通過のため）
   - `[Test]` ClassStateMachine の配列順循環単体テスト

@@ -25,7 +25,7 @@
 # STATUS VALUES: active | deprecated | superseded-by: TR-[system]-NNN
 
 version: 3
-last_updated: "2026-04-28"
+last_updated: "2026-04-29"
 
 # Registered: 25 MVP-tier requirements from /architecture-review 2026-04-27
 # Source GDDs: design/gdd/game-concept.md, design/gdd/systems-index.md
@@ -36,6 +36,20 @@ last_updated: "2026-04-28"
 # no new TR-IDs registered. TR-camera-002 promoted to ✅ Covered, TR-camera-001
 # promoted to ⚠️ Partial (Body component / Confiner method names deferred to
 # R1 spike). See architecture-review-2026-04-28-v2.md.
+#
+# 2026-04-29 coverage re-run after ADR-0007 (Combo Input Buffer) /
+# ADR-0008 (Class Abilities System) / ADR-0009 (Combat System): no new
+# TR-IDs registered. Status transitions only:
+#   TR-combo-001/002       ❌ → ✅  (ADR-0007)
+#   TR-abilities-001       ❌ → ✅  (ADR-0008)
+#   TR-abilities-002       ⚠️ → ✅  (ADR-0008)
+#   TR-combat-001          ⚠️ → ✅  (ADR-0009)
+#   TR-combat-002          ❌ → ✅  (ADR-0009)
+# Coverage: 94% (29 ✅ / 1 ⚠️ TR-camera-001 / 1 ❌ TR-enemyai-001).
+# Verdict: 🟢 PASS (MVP architectural coverage achieved).
+# Future TR candidate: TR-health-001 (Health & Damage System #13, VS scope) —
+# IDamageReceiver contract pre-locked by ADR-0009 in Game.Core.
+# See architecture-review-2026-04-29.md.
 
 requirements:
   # ── Input System (MVP, Foundation) ──

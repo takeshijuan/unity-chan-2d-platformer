@@ -1,9 +1,31 @@
 # Active Session State
 
-**Last Updated**: 2026-04-28
-**Branch**: feature/bold-faraday-156bf7
+**Last Updated**: 2026-04-29
+**Branch**: feature/amazing-wozniak-5cc2d1
 
 ## Current Task
+
+**Skill**: `/architecture-decision combat-system` → **完了（ADR-0009）**
+**Status**: ADR-0009 Combat System を Proposed (Validation Gate: CS0-CS5) で書込済。unity-specialist + TD-ADR dual review 完了後、全修正適用済。ADR-0008 GDD sync（integration example 修正）完了。registry 6 件追記 + motor_intent_command consumers 更新。
+**Review Mode**: full（unity-specialist + TD-ADR dual voices 完了）
+
+### ADR-0009 最終決定サマリー
+- Thin Mediator パターン: HitConfirmed → CombatSystem → ApplyHitstop(attacker) + IDamageReceiver.TakeDamage
+- IDamageReceiver interface: `TakeDamage(float damage, Vector2 knockbackImpulse)` in Game.Core.asmdef
+- CombatSystem: player-local MonoBehaviour（DDOL 不使用）、[DefaultExecutionOrder(-40)]、Update なし
+- DummyEnemy: `_rb.linearVelocity = knockbackImpulse`（AddForce 禁止 — Box2D v3 SetActive 競合）
+- HitNormal = AttackerFacing（OverlapBoxNonAlloc の接触法線ではない）
+- double-hitstop は ADR-0002 Mathf.Max 合成で安全（attacker + receiver 独立 motor）
+- R6: ClassAbilityData に Damage(1f) + HitstopSec(0.04f) + KnockbackImpulse(5f) を追記
+- Tier 1 Migration: DummyEnemy → HealthComponent + EnemyController（ICharacterMotor.RequestImpulse）
+- ADR-0008 GDD sync 修正: integration example で HitstopFrames → HitstopSec, knockback ベクトル算出追加
+
+### 次の推奨タスク
+- `/architecture-review` で ADR カバレッジ再検証（**新規セッションで実行**）
+- GDD 執筆: `/design-system class-abilities-system`（ADR-0008 Proposed だが IAbilityExecutor 確定済）
+- ADR-0010 候補: Health & Damage System（IDamageReceiver の Tier 1 実装 HealthComponent を確定）
+
+### 過去 ADR-0006 完了履歴
 
 **Skill**: `/architecture-decision camera-system` → `/autoplan` Phase 1-4 → 実装 — **完了（ADR-0006 thin provisional）**
 **Status**: ADR-0006 Camera System を thin provisional scope（3 lock + 11 defer + R1 spike）で Proposed (Validation Gate: C0-C1) で書込済、`/autoplan` CEO + Eng dual voices 6/6 + 5/6 dimensions disagree → USER CHALLENGE Option B 採択、registry minimal append 1 件 + 1 referenced_by 更新、deprecated-apis.md / systems-index.md / active.md sync 済
@@ -191,6 +213,26 @@
 - **Top ADR gaps**: ADR-0006 Camera System / ADR-0007 Combo Input Buffer / ADR-0008 Class Abilities System
 - **Report**: docs/architecture/architecture-review-2026-04-28.md
 - **Files updated**: tr-registry.yaml (v2 → v3), traceability-index.md, architecture-review-2026-04-28.md (new)
+
+## Session Extract — /architecture-review coverage 2026-04-29 (ADR-0007/0008/0009 反映後)
+
+- **Mode**: coverage
+- **Verdict**: 🟢 **PASS**（74% → **94%** に大幅改善、MVP architectural coverage 達成）
+- **Requirements**: 31 registered（変更なし）— **29 ✅ / 1 ⚠️ / 1 ❌**
+- **New TR-IDs registered**: None（既存 31 件のステータス遷移のみ）
+- **TR-ID 状態遷移**: TR-combo-001/002 ❌→✅ (ADR-0007) / TR-abilities-001 ❌→✅ + TR-abilities-002 ⚠️→✅ (ADR-0008) / TR-combat-001 ⚠️→✅ + TR-combat-002 ❌→✅ (ADR-0009)
+- **残存ギャップ**: TR-camera-001 ⚠️（R1 spike 待ち、ADR-0006a で lock 予定）/ TR-enemyai-001 ❌（VS 期 defer、MVP は DummyEnemy/ADR-0009 で機能代替）
+- **GDD revision flags**: game-concept.md L236 / L333 / L313-315 — 全 open（前回繰越、coverage mode 対象外）
+- **Future TR candidate**: TR-health-001（Health & Damage System #13, VS）— IDamageReceiver contract は ADR-0009 で先取り確定済
+- **Report**: docs/architecture/architecture-review-2026-04-29.md
+- **Files updated**: traceability-index.md（Coverage Summary + 6 行 TR ステータス + Known Gaps + Verdict History）, tr-registry.yaml（last_updated + コメント追記、エントリ変更なし）
+
+### 推奨次アクション
+1. R1 + R5 + V1 の 3 spikes 並列実行（~1 week）→ ADR-0001/0002/0006 Validation Gate 解消
+2. ADR-0006a 起草（deferred 11 件を empirical data ベースで lock）
+3. 全 9 ADR Accepted 後 → `/gate-check pre-production`
+
+---
 
 ## Session Extract — /architecture-review coverage 2026-04-28 (v2、ADR-0006 反映後)
 
