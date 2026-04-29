@@ -31,6 +31,11 @@ last_updated: "2026-04-28"
 # Source GDDs: design/gdd/game-concept.md, design/gdd/systems-index.md
 # VS / Polish / Cross-cutting requirements (14 additional entries identified
 # during review) will be appended when corresponding GDDs are authored.
+#
+# 2026-04-28 (v2) coverage re-run after ADR-0006 (Camera, thin provisional):
+# no new TR-IDs registered. TR-camera-002 promoted to ✅ Covered, TR-camera-001
+# promoted to ⚠️ Partial (Body component / Confiner method names deferred to
+# R1 spike). See architecture-review-2026-04-28-v2.md.
 
 requirements:
   # ── Input System (MVP, Foundation) ──

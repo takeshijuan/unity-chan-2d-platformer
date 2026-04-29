@@ -1,13 +1,20 @@
 # Active Session State
 
-**Last Updated**: 2026-04-27
-**Branch**: feature/blissful-antonelli-00b339
+**Last Updated**: 2026-04-28
+**Branch**: feature/bold-faraday-156bf7
 
 ## Current Task
 
+**Skill**: `/architecture-decision camera-system` → `/autoplan` Phase 1-4 → 実装 — **完了（ADR-0006 thin provisional）**
+**Status**: ADR-0006 Camera System を thin provisional scope（3 lock + 11 defer + R1 spike）で Proposed (Validation Gate: C0-C1) で書込済、`/autoplan` CEO + Eng dual voices 6/6 + 5/6 dimensions disagree → USER CHALLENGE Option B 採択、registry minimal append 1 件 + 1 referenced_by 更新、deprecated-apis.md / systems-index.md / active.md sync 済
+**Review Mode**: full
+
+### 直前完了 — 履歴は下記 "Current Session State — ADR-0006" セクション参照
+
+#### 過去 ADR-0003 完了履歴
+
 **Skill**: `/architecture-decision` — **完了（ADR-0003）**
 **Status**: ADR-0003 VFX System Boundary + IVFXPublisher を Proposed (Validation Gate: G1-G5) で書込済、registry append 17 件済、art-bible / systems-index sync 済
-**Review Mode**: full
 
 ### 直前完了タスク（このセッション内）
 
@@ -184,3 +191,114 @@
 - **Top ADR gaps**: ADR-0006 Camera System / ADR-0007 Combo Input Buffer / ADR-0008 Class Abilities System
 - **Report**: docs/architecture/architecture-review-2026-04-28.md
 - **Files updated**: tr-registry.yaml (v2 → v3), traceability-index.md, architecture-review-2026-04-28.md (new)
+
+## Session Extract — /architecture-review coverage 2026-04-28 (v2、ADR-0006 反映後)
+
+- **Mode**: coverage
+- **Verdict**: 🟡 CONCERNS（71% → **74%** に微増、傾向継続）
+- **Requirements**: 31 registered（変更なし）— **23 ✅ / 3 ⚠️ / 5 ❌**
+- **New TR-IDs registered**: None（ADR-0006 は既存 TR-camera-001/002 を扱う）
+- **TR-ID 状態遷移**: TR-camera-002 ❌ → ✅（ICharacterMotor.Position follow contract lock）/ TR-camera-001 ❌ → ⚠️（package + Confiner2D 採用 lock、Body component / Confiner method 名 deferred to R1 spike）
+- **GDD revision flags**: game-concept.md L236 / L333 / **L313-315（解像度 inconsistency、新規）** — 全 open
+- **Top ADR gaps**: ADR-0007 Combo Input Buffer / ADR-0008 Class Abilities System / ADR-0009 Combat（残 5 gap）
+- **Report**: docs/architecture/architecture-review-2026-04-28-v2.md
+- **Files updated**: traceability-index.md（Coverage Summary + Camera 2 行 + Verdict History 行）, tr-registry.yaml（last_updated note のみ）, architecture-review-2026-04-28-v2.md (new)
+
+---
+
+## Current Session State — ADR-0006 Camera System **Thin Provisional 起草完了**（Proposed/C0-C1）— 2026-04-28
+
+- **Skill**: `/architecture-decision camera-system` → `/autoplan` Phase 1-4 review
+- **Worktree**: `feature/bold-faraday-156bf7`
+- **Plan file**: `/Users/takeshi/.claude/plans/camera-system-streamed-aho.md`（FINAL SCOPE + autoplan review + PRELIMINARY DRAFT 全保管）
+- **Restore point**: `~/.gstack/projects/takeshijuan-unity-chan-2d-platformer/feature-bold-faraday-156bf7-autoplan-restore-20260428-183355.md`
+
+### `/autoplan` 結果サマリ
+
+- **Phase 1 CEO dual voices**（Codex + Claude subagent）: 6/6 dimensions DISAGREE、7+8 findings
+- **Phase 2 Design**: SKIPPED（UI scope 不検出）
+- **Phase 3 Eng dual voices**（Codex + Claude subagent）: 5/6 dimensions DISAGREE + 1 single-positive (security)、9+7 findings
+- **Phase 3.5 DX**: SKIPPED（DX scope 不検出 — ICameraDirector は内部 game team API、外部 developer-facing でない）
+- **Phase 4 USER CHALLENGE**: ユーザ Option B 採択（Thin provisional ADR + R1 spike）
+- **8 cross-phase systemic themes** 確認: premature lock / Tier 1 under MVP label / Foundation Singleton cargo-cult 可能性 / magic Damping numbers / gates not enforceable / craft missing (Look Ahead) / proxy proliferation / shake API inflation
+- **Verdict**: 🟡 CONCERNS RESOLVED VIA SCOPE REVISION — 51KB 原案を thin provisional に縮小し scope 受入
+
+### ADR-0006 thin provisional scope
+
+**Locked Decisions (3 件)**:
+1. Camera package: Cinemachine 3 (`com.unity.cinemachine`、Unity 6.3 LTS 同梱)
+2. Follow contract: `ICharacterMotor.Position` 経由（ADR-0002 read-only Vector2、bridge 方式は R1 + ADR-0002 V1 後）
+3. MVP confiner: 単一 PolygonCollider2D + `CinemachineConfiner2D.BoundingShape2D` Inspector アサイン
+
+**Deferred Decisions (11 件)**: Body component / Damping / Foundation Singleton 適用 / ICameraDirector full surface / Camera Shake routing / CharacterFollowProxy vs TransformReadProxy / Pixel Perfect Reference / Crop Frame setup / 6 anchor shake profiles / performance budgets / forbidden patterns 4 件
+
+**R1 Spike (C0 prerequisite)**: Unity 6.3 LTS macOS Editor で半日 sandbox、12 verification items を `production/qa/evidence/r1-camera-cinemachine3-spike-result.md` に記録
+
+### Files Created / Modified（本セッション）
+
+#### 新規作成
+- `docs/architecture/adr-0006-camera-system.md` — ADR-0006 thin provisional (Status: Proposed, Validation Gate C0-C1, ~470 行)
+- `/Users/takeshi/.claude/plans/camera-system-streamed-aho.md` — plan ファイル（FINAL SCOPE + /autoplan review + PRELIMINARY DRAFT、~ KB）
+- restore point file under `~/.gstack/projects/`
+
+#### 更新
+- `docs/registry/architecture.yaml` — minimal append: `interfaces.camera_follow_minimal` 新規 + `state_ownership.motor_position.referenced_by` に ADR-0006 追加 + last_updated note
+- `docs/engine-reference/unity/deprecated-apis.md` — Cinemachine 3.x 移行 section 追加（CinemachineVirtualCamera / FramingTransposer / 旧 CinemachineBrain API 列挙）
+- `design/gdd/systems-index.md` — #7 Camera System 行を Provisional (ADR-0006, C0-C1 + R1 spike pending) 参照に更新
+- `production/session-state/active.md` — 本セクション追記
+
+### `/autoplan` Decision Audit Trail（11 entries）
+
+1. Phase 0 — Skip /office-hours offer (Auto, Pragmatic) — Plan IS comprehensive feature design doc
+2. Phase 0 — UI scope = NO (Auto, Scope detection) — "component" matches all Cinemachine engine concepts
+3. Phase 0 — DX scope = NO (Auto, Scope detection) — "API" matches all internal Unity APIs
+4. Phase 1 — Premise gate: all confirmed (User-decided, Gate)
+5. Phase 1 — Mode = SELECTIVE EXPANSION (Auto, Autoplan default)
+6. Phase 1 — Defer 5 expansion candidates to TODOS.md (Auto, P2/P3) — Multi-vcam / Look Ahead / Vertical Look / Dynamic Zoom / Smart Damping curve
+7. Phase 2 — Skipped (Auto, Phase scope)
+8. Phase 3 — Run dual voices in parallel not sequential (Auto, P3 Pragmatic) — saves wall time, spirit met
+9. Phase 3.5 — Skipped (Auto, Phase scope)
+10. Phase 4 — Surface as USER CHALLENGE (Auto, Autoplan rule) — both models recommend significant change
+11. Phase 4 — User Option B (User-decided, Gate) — thin provisional + R1 spike
+
+### Outstanding Tasks（次セッション以降）
+
+#### ADR-0006 を Accepted に昇格させるための前提（並列実行可、~1 week 想定）
+- **R1 Camera Editor Spike 実行**（半日、Unity 6.3 LTS macOS Editor、12 verification items）→ `production/qa/evidence/r1-camera-cinemachine3-spike-result.md` 書込
+- **ADR-0001 R5 Class Switch Spike 実行**（既 prototype template main 取込済、`prototypes/r5-class-switch-spike/`）
+- **ADR-0002 V1 CharacterController2D Spike 実行**（Physics2D.SyncTransforms() + Cast + tunneling 防止 + Teleport API 追加）
+
+#### 3 spikes 通過後の follow-up ADR 起草
+- **仮称 ADR-0006a Camera System Implementation** — deferred 11 件すべてを empirical data ベースで lock:
+  - Cinemachine Body component name (R1 #4)
+  - Damping X/Y values (Class-Switch prototype 体感)
+  - Foundation Singleton 適用 / DDOL+scene refs 矛盾解消
+  - Full ICameraDirector surface (Brain.OutputCamera 経由 observability API 再設計、shake API backing model)
+  - Camera Shake routing hybrid (motor event vs VFX cue)
+  - CharacterFollowProxy vs ICharacterMotor.TransformReadProxy（ADR-0002 への逆提案セッション）
+  - Pixel Perfect Reference Resolution（art-bible vs game-concept.md inconsistency 解消後）
+  - Crop Frame setup（R1 #10 + Steam Deck 実機）
+  - 6 anchor CameraShakeProfile SO assets（Designer + prototype）
+  - Performance budgets（R1 + Steam Deck 実機測定）
+  - Forbidden patterns 残 3 件（asmdef boundary + PR review 運用）
+
+#### GDD revision flags（次回 `/architecture-review` で処理）
+- **L313-315 解像度 inconsistency**（新規）: game-concept.md 128×128 / 96×96 / 64×64 vs art-bible.md 384×216 / 48×48 / 32-64
+- 既存 L236 / L333 と合わせて次回 architecture-review で resolve
+
+#### 推奨次セッション
+1. **新規セッションで `/architecture-review coverage`** — ADR-0006 provisional 反映後の coverage 再計測（71% → 75% 前後想定、TR-camera-001 partial / TR-camera-002 full）
+2. **R1 + R5 + V1 の 3 spikes を並列実行**（独立、~1 week）
+3. ADR-0007 Combo Input Buffer 起草も並行可（次の Top ADR gap）
+
+### Validation Gates Outstanding（更新）
+
+| ADR | Gate | Status | Description |
+|-----|------|--------|-------------|
+| ADR-0001 | R5 | spike template ready（main 取込）、実行待ち | R5 + 新規 SwitchContext revise が ADR-0004/0005 前提 |
+| ADR-0002 | V1-V5 | 待ち | Rigidbody2D.Cast() / SyncTransforms / tunneling 防止検証 + 新規 Teleport API + ADR-0006 C1 前提 |
+| ADR-0003 | G1-G5 | 待ち | Anchor cue coverage / Pool hot path / Color Wash sorting / Cold-miss telemetry / Steam Deck performance |
+| ADR-0004 | S1-S6 | 待ち | Save / Load round-trip / Crash safety / Migration / Forbidden enforcement / Steam Deck I/O / IL2CPP CI gate |
+| ADR-0005 | I0-I5 | 待ち | IL2CPP smoke / Action Map bleed-through / Rebinding round-trip / Combo Buffer timestamp / Roslyn analyzer / Steam Deck input |
+| **ADR-0006** | **C0-C1** | **待ち** | R1 Editor spike (12 Cinemachine 3.x API verification) + Provisional follow basic (ADR-0002 V1 通過後 / 30/60/120Hz×50Hz physics matrix で 1-frame sync) |
+

@@ -119,6 +119,16 @@ Format: **Don't use X** → **Use Y instead**
 | **URP Compatibility Mode** | RenderGraph API | Unity 6.3 で**完全削除**、`RenderGraphSettings.enableRenderCompatibilityMode` は読み取り専用 |
 | `CommandBuffer` ベースの旧 Custom RenderPass | `RasterRenderPass` / RenderGraph | Unity 6 から段階的移行、6.3 で完全必須化 |
 
+## Cinemachine (Unity 6.3 / Cinemachine 3.x)
+
+| Deprecated | Replacement | Notes |
+|------------|-------------|-------|
+| `Cinemachine.CinemachineVirtualCamera` | `Unity.Cinemachine.CinemachineCamera` | Cinemachine 3.x で **rename + namespace 変更**。2.x 互換 shim は期間限定。新規プロジェクトは 3.x 系統のみ。`docs/architecture/adr-0006-camera-system.md` Locked Decision 1 で確定 |
+| `CinemachineFramingTransposer` (Body component) | **要 Editor 確認**（`PositionComposer` 候補、ADR-0006 R1 spike #4 で検証） | Cinemachine 3.x で Body component 体系が改訂、命名と機能差は 2.x と異なる可能性 |
+| Cinemachine 2.x 旧 `CinemachineBrain` API（`m_UpdateMethod` 等の private field アクセス） | Cinemachine 3.x `CinemachineBrain.UpdateMethod` 公開プロパティ | **要 Editor 確認**（既定値 LateUpdate / SmartUpdate / FixedUpdate / ManualUpdate のどれか、ADR-0006 R1 spike #2 で検証） |
+
+> **Cinemachine 3.x 移行注意**: ADR-0006 Camera System (provisional) で `com.unity.cinemachine` 3.x 系統採用が確定。LLM 訓練データは 2.x 主体のため、API 名 12 箇所は ADR-0006 R1 spike (`production/qa/evidence/r1-camera-cinemachine3-spike-result.md`) で実機検証してから follow-up ADR で具体仕様を lock。
+
 ---
 
 ## Quick Migration Patterns

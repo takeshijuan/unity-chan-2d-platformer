@@ -3,7 +3,8 @@
 **Last Updated**: 2026-04-28
 **Engine**: Unity 6.3 LTS (6000.3.x)
 **Source Reviews**:
-- [architecture-review-2026-04-28.md](architecture-review-2026-04-28.md) — coverage mode (latest)
+- [architecture-review-2026-04-28-v2.md](architecture-review-2026-04-28-v2.md) — coverage mode (latest, ADR-0006 反映)
+- [architecture-review-2026-04-28.md](architecture-review-2026-04-28.md) — coverage mode (ADR-0005 まで)
 - [architecture-review-2026-04-27.md](architecture-review-2026-04-27.md) — initial full review
 
 ---
@@ -12,12 +13,12 @@
 
 | Status | Count | % |
 |---|---|---|
-| ✅ Covered | 22 | 71% |
-| ⚠️ Partial | 2 | 6% |
-| ❌ Gap | 7 | 23% |
+| ✅ Covered | 23 | 74% |
+| ⚠️ Partial | 3 | 10% |
+| ❌ Gap | 5 | 16% |
 | **Total registered** | **31** | 100% |
 
-> 抽出範囲: 29 システムのうち MVP 9 システム + 主要 VS システムの「architectural-decision-implying」要件のみ。実装詳細・コンテンツ要件は除外。31 件全件が `tr-registry.yaml` に登録済（2026-04-28 で +6 件: TR-save-001/002, TR-classswitch-005/006, TR-vfx-001/002）。残 deferred 15 件は VS / Polish / Cross-cutting で GDD authoring 時に追加登録予定。
+> 抽出範囲: 29 システムのうち MVP 9 システム + 主要 VS システムの「architectural-decision-implying」要件のみ。実装詳細・コンテンツ要件は除外。31 件全件が `tr-registry.yaml` に登録済（2026-04-28 で +6 件: TR-save-001/002, TR-classswitch-005/006, TR-vfx-001/002）。残 deferred 15 件は VS / Polish / Cross-cutting で GDD authoring 時に追加登録予定。ADR-0006 thin provisional 反映で TR-camera-002 → ✅ / TR-camera-001 → ⚠️ 昇格。
 
 ---
 
@@ -51,8 +52,8 @@
 | TR-classswitch-004 | game-concept.md Core Mech 1 | Class Switch | 切替 SE | ADR-0001 | ✅ |
 | TR-classswitch-005 | game-concept.md Pillar 4 | Class Switch | 4 職目追加コードゼロ | ADR-0001 | ✅ |
 | TR-classswitch-006 | systems-index.md A1 | Class Switch | 三分割の枠組み | ADR-0001 | ✅ |
-| TR-camera-001 | game-concept.md | Camera | Cinemachine 3 + 2D Confiner | — | ❌ |
-| TR-camera-002 | game-concept.md | Camera | `ICharacterMotor.Position` follow | — | ❌ |
+| TR-camera-001 | game-concept.md | Camera | Cinemachine 3 + 2D Confiner | ADR-0006 部分 | ⚠️ |
+| TR-camera-002 | game-concept.md | Camera | `ICharacterMotor.Position` follow | ADR-0006 | ✅ |
 | TR-combo-001 | game-concept.md Core Mech 4 | Combo Input Buffer | 先行入力 4-6 フレーム | — | ❌ |
 | TR-combo-002 | game-concept.md Core Mech 4 | Combo Input Buffer | 空中キャンセル | — | ❌ |
 | TR-vfx-001 | systems-index.md A4 | VFX System | `IVFXPublisher` pub/sub | ADR-0003 | ✅ |
@@ -75,10 +76,12 @@
 
 ### High Priority（Pre-Production gate を阻むもの）
 
-#### ADR-0006 候補: Camera System / Cinemachine 3 統合
-覆う TR-IDs: TR-camera-001, TR-camera-002
-依存: ADR-0002 `ICharacterMotor.Position` follow target 経由
-Suggested skill: `/architecture-decision camera-system`
+#### ADR-0006 Camera System（thin provisional 起草済 / 2026-04-28）
+覆う TR-IDs: TR-camera-002 ✅ full / TR-camera-001 ⚠️ partial
+Status: Proposed (Validation Gate C0-C1)
+- C0: R1 Editor spike（半日、12 verification items）
+- C1: ADR-0002 V1 通過後、1-frame sync 30/60/120Hz × 50Hz physics matrix
+Follow-up: ADR-0006a で deferred 11 件（Body component / Damping / Foundation Singleton 適用 / ICameraDirector full surface / Camera Shake routing / TransformReadProxy / Pixel Perfect / Crop Frame / 6 anchor shake profiles / performance budgets / forbidden patterns 残 3 件）を R1 + R5 + V1 spike empirical data ベースで lock
 
 #### ADR-0007 候補: Combo Input Buffer
 覆う TR-IDs: TR-combo-001, TR-combo-002
@@ -152,4 +155,5 @@ Suggested skill: `/architecture-decision combat-system-tier0`
 | Date | Verdict | Coverage | Notes |
 |---|---|---|---|
 | 2026-04-27 | 🟡 CONCERNS | 36% Covered / 13% Partial / 51% Gap (39 reqs total) | Initial review |
-| 2026-04-28 | 🟡 CONCERNS | **71% Covered / 6% Partial / 23% Gap (31 registered)** | ADR-0003/0004/0005 確定後の coverage 再集計、TR registry +6 件 |
+| 2026-04-28 | 🟡 CONCERNS | 71% Covered / 6% Partial / 23% Gap (31 registered) | ADR-0003/0004/0005 確定後の coverage 再集計、TR registry +6 件 |
+| 2026-04-28 (v2) | 🟡 CONCERNS | **74% Covered / 10% Partial / 16% Gap (31 registered)** | ADR-0006 thin provisional 反映、TR-camera-002 ✅ / TR-camera-001 ⚠️、registry 変更なし |
