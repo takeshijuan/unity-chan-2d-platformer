@@ -42,6 +42,17 @@ bash tools/ci/unity-compile-check.sh --verbose # ログパス保存
 
 CI 化は将来の検討事項（Pro license 取得後 game-ci/unity-test-runner v4 へ移行）。
 
+### Tests
+
+Bats unit tests for error paths (exit codes 2, 3, 4, 5):
+
+```bash
+brew install bats-core   # 初回のみ
+bats tools/ci/tests/unity-compile-check.bats
+```
+
+8 ケース：missing ProjectVersion.txt, invalid version format, path traversal rejection, editor-not-found, lock detection (2 paths), BOM strip, CRLF strip。PASS path (exit 0) と compile-error path (exit 1) は実 Unity 起動が必要なため manual verification（ship cycle で実行）。
+
 ### Errors only / Warnings 許容
 
 User 指示により `error CS*` パターンのみブロック対象。Warning は CI ログ表示なし（zero-warning policy は release-stage gate で別途検討）。
