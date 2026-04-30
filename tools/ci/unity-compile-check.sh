@@ -2,7 +2,10 @@
 # Unity 6.3 LTS local compile check (Personal license — runs locally only)
 # Usage: bash tools/ci/unity-compile-check.sh [--verbose]
 # Exit: 0=success, 1=compile error, 2=editor not found, 3=project version not found,
-#       4=editor lock detected, 5=invalid version format
+#       4=editor lock detected, 5=invalid version format,
+#       6=Unity batch-mode timeout, 7=log file unreadable
+# Env: UNITY_EDITOR_PATH (override editor path),
+#      UNITY_COMPILE_CHECK_TIMEOUT (seconds, default 600)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,31 +61,83 @@ fi
 # Cross-platform mktemp (BSD vs GNU compatibility)
 # Note: macOS BSD mktemp requires X's at end of basename — no suffix after XXXXXX
 COMPILE_LOG="$(mktemp "${TMPDIR:-/tmp}/unity-compile-check.XXXXXX")"
-# Defensive: single-quote outer + double-quote inner so paths with spaces/quotes
-# survive (mktemp won't produce them, but trap text is parsed as a command)
-trap 'rm -f "$COMPILE_LOG"' EXIT
+
+# C3 mitigation: trap kills any spawned Unity child + cleans up temp log.
+# UNITY_PID is set after Unity is launched in background.
+UNITY_PID=""
+cleanup() {
+    if [ -n "$UNITY_PID" ] && kill -0 "$UNITY_PID" 2>/dev/null; then
+        kill "$UNITY_PID" 2>/dev/null || true
+        # Give it 2s to exit cleanly, then force-kill
+        sleep 2
+        kill -9 "$UNITY_PID" 2>/dev/null || true
+    fi
+    rm -f "$COMPILE_LOG"
+}
+trap cleanup EXIT INT TERM
 
 echo "Running Unity compile check (version: $UNITY_VERSION)..."
 echo "Project: $PROJECT_ROOT"
 [ "$VERBOSE" = "--verbose" ] && echo "Log: $COMPILE_LOG"
 
+# C2 mitigation: 10-minute timeout watchdog on Unity batch invocation.
+# Unity can hang on license activation, package resolution, or domain reload.
+# UNITY_COMPILE_CHECK_TIMEOUT env var overrides (seconds).
+TIMEOUT_SEC="${UNITY_COMPILE_CHECK_TIMEOUT:-600}"
+
 # Unity 6.3 LTS requires the full -batchmode -nographics -quit combo
 # Using -quit alone may not exit cleanly in some patch versions
-set +e
 "$UNITY_EDITOR" -batchmode -nographics \
   -projectPath "$PROJECT_ROOT" \
   -logFile "$COMPILE_LOG" \
-  -quit
+  -quit &
+UNITY_PID=$!
+
+# Watchdog: poll every second up to TIMEOUT_SEC
+WAITED=0
+while kill -0 "$UNITY_PID" 2>/dev/null; do
+    if [ "$WAITED" -ge "$TIMEOUT_SEC" ]; then
+        echo "FAIL: Unity batch-mode timed out after ${TIMEOUT_SEC}s" >&2
+        kill "$UNITY_PID" 2>/dev/null || true
+        sleep 2
+        kill -9 "$UNITY_PID" 2>/dev/null || true
+        wait "$UNITY_PID" 2>/dev/null || true
+        UNITY_PID=""
+        echo "Full log: $COMPILE_LOG" >&2
+        trap - EXIT INT TERM  # disarm cleanup so log persists
+        exit 6
+    fi
+    sleep 1
+    WAITED=$((WAITED + 1))
+done
+
+# Capture exit code (wait reports child status without re-running)
+wait "$UNITY_PID"
 EXIT_CODE=$?
-set -e
+UNITY_PID=""  # prevent cleanup from re-killing the now-exited process
+
+# C1 mitigation: verify log file is readable BEFORE grepping.
+# If $COMPILE_LOG is missing/unreadable (Unity no-op launch, FS error, perms),
+# do NOT silently treat that as "no compile errors" — it's evidence missing.
+if [ ! -r "$COMPILE_LOG" ]; then
+    echo "FAIL: Unity log file unreadable at $COMPILE_LOG (Unity exit=$EXIT_CODE)" >&2
+    echo "Cannot verify compile success without log evidence." >&2
+    trap - EXIT INT TERM
+    exit 7
+fi
 
 # Detect compile errors via exit code OR log pattern (false-negative mitigation)
 # Note: empty project (0 .cs files) exits 0 -- intentional, "no code = no errors"
 # Note: Warnings (CS####) are ignored by design (Errors only block)
-if [ $EXIT_CODE -ne 0 ] || grep -qE 'error CS[0-9]+' "$COMPILE_LOG"; then
+COMPILE_ERROR_FOUND=0
+if grep -qE 'error CS[0-9]+' "$COMPILE_LOG"; then
+    COMPILE_ERROR_FOUND=1
+fi
+
+if [ "$EXIT_CODE" -ne 0 ] || [ "$COMPILE_ERROR_FOUND" -eq 1 ]; then
     # Preserve log on failure (override trap)
     PRESERVED_LOG="$COMPILE_LOG"
-    trap - EXIT
+    trap - EXIT INT TERM
     echo "FAIL: Compile errors detected (Unity exit=$EXIT_CODE)" >&2
     echo "" >&2
     grep -E 'error CS[0-9]+' "$PRESERVED_LOG" | head -20 >&2 || true

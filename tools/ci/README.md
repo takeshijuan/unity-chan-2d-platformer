@@ -29,6 +29,8 @@ bash tools/ci/unity-compile-check.sh --verbose # ログパス保存
 | 3 | `ProjectSettings/ProjectVersion.txt` 不在 |
 | 4 | Editor lock 検出（並行起動） |
 | 5 | 不正な Unity バージョン形式 |
+| 6 | Unity batch-mode timeout（既定 600 秒、`UNITY_COMPILE_CHECK_TIMEOUT` で override 可） |
+| 7 | Unity log ファイル読み取り不可（silent failure 検出） |
 
 ### When to invoke
 
@@ -51,7 +53,7 @@ brew install bats-core   # 初回のみ
 bats tools/ci/tests/unity-compile-check.bats
 ```
 
-8 ケース：missing ProjectVersion.txt, invalid version format, path traversal rejection, editor-not-found, lock detection (2 paths), BOM strip, CRLF strip。PASS path (exit 0) と compile-error path (exit 1) は実 Unity 起動が必要なため manual verification（ship cycle で実行）。
+10 ケース：missing ProjectVersion.txt, invalid version format, path traversal rejection, editor-not-found, lock detection (2 paths), BOM strip, CRLF strip, batch-mode timeout, log file unreadable (silent failure mitigation)。PASS path (exit 0) と compile-error path (exit 1) は実 Unity 起動が必要なため manual verification（ship cycle で実行）。
 
 ### Errors only / Warnings 許容
 

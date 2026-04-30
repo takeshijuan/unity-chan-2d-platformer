@@ -89,3 +89,43 @@ teardown() {
         run bash "$TEST_PROJ/tools/ci/unity-compile-check.sh"
     [ "$status" -eq 2 ]
 }
+
+@test "exit 6 when Unity batch-mode exceeds timeout (Codex C2)" {
+    # Fake Unity that hangs for 30s regardless of args. Timeout=2s should kill it.
+    echo "m_EditorVersion: 6000.3.13f1" > "$TEST_PROJ/ProjectSettings/ProjectVersion.txt"
+    cat > "$TEST_PROJ/fake-unity-hang.sh" <<'SCRIPT'
+#!/bin/bash
+sleep 30
+SCRIPT
+    chmod +x "$TEST_PROJ/fake-unity-hang.sh"
+    UNITY_EDITOR_PATH="$TEST_PROJ/fake-unity-hang.sh" \
+    UNITY_COMPILE_CHECK_TIMEOUT=2 \
+        run bash "$TEST_PROJ/tools/ci/unity-compile-check.sh"
+    [ "$status" -eq 6 ]
+    [[ "$output" == *"timed out after 2s"* ]]
+}
+
+@test "exit 7 when Unity log file is unreadable (Codex C1)" {
+    # Use /usr/bin/true as fake Unity — exits 0 immediately without writing log.
+    # Then delete the log file before the grep step. Hard to simulate cleanly,
+    # so we test by pointing to a fake editor that nukes its own log file.
+    echo "m_EditorVersion: 6000.3.13f1" > "$TEST_PROJ/ProjectSettings/ProjectVersion.txt"
+    # Create a fake Unity that deletes the log file argument and exits 0
+    cat > "$TEST_PROJ/fake-unity-no-log.sh" <<'EOF'
+#!/bin/bash
+# Find -logFile arg and delete the file
+for ((i=1; i<=$#; i++)); do
+    if [ "${!i}" = "-logFile" ]; then
+        nexti=$((i+1))
+        rm -f "${!nexti}"
+        break
+    fi
+done
+exit 0
+EOF
+    chmod +x "$TEST_PROJ/fake-unity-no-log.sh"
+    UNITY_EDITOR_PATH="$TEST_PROJ/fake-unity-no-log.sh" \
+        run bash "$TEST_PROJ/tools/ci/unity-compile-check.sh"
+    [ "$status" -eq 7 ]
+    [[ "$output" == *"log file unreadable"* ]]
+}
