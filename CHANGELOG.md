@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.2.0] - 2026-04-30
+
+### Added
+
+- **Unity 6.3 LTS プロジェクト本体初期化** — Universal 2D Cross-Platform 6.1.2 テンプレートを worktree ルートに展開（`Assets/`、`Packages/`、`ProjectSettings/` 22 ファイル + `ProjectVersion.txt`）。Asmdef 5 件（`Game.Core` / `Game.Gameplay` / `Game.Editor` / `Game.Tests.EditMode` / `Game.Tests.PlayMode`）を `autoReferenced: false` で配置し、ADR-0009 で言及済みの構造を確定。
+- **Unity ローカル compile-check パイプライン** — `tools/ci/unity-compile-check.sh`（~95 行 bash、Personal license 対応、macOS-first）と `tools/ci/README.md` を新規追加。Path traversal 対策（version regex バリデーション）、`Library/Locks/Packages.lock` + `Temp/UnityLockfile` 検出、cross-platform `mktemp`（BSD/GNU 両対応）、BOM/CRLF strip、trap-based log cleanup、Unity Hub install URL 付き error message、CI 環境自動判定など safety hardening を組込み。
+- **Quality-gate skill 統合** — `/gate-check` 4 phase gates（Tech Setup → Pre-Production / Pre-Production → Production / Production → Polish / Polish → Release）と `/story-done` Phase 3 に compile-check 実行ステップを追加。
+- **Bats unit tests** — `tools/ci/tests/unity-compile-check.bats`（8 ケース、~91 行）。exit code 2/3/4/5 + BOM/CRLF stripping + path traversal rejection。`brew install bats-core && bats tools/ci/tests/unity-compile-check.bats` で実行。
+- **Directory documentation** — `.claude/docs/directory-structure.md` を Unity レイアウト + `tools/ci/` 実態に更新。
+
+### Changed
+
+- **`Packages/manifest.json`** — Unity 6.3 LTS 互換性のためのパッケージ整理：
+  - **削除**: `com.unity.collab-proxy@2.6.0`（Plastic SCM、Git 運用で不要、Unity 6.3 で `ObjectInfo` ambiguous reference エラー発生）
+  - **削除**: `com.unity.visualscripting@1.9.5`（C# 運用、`technical-preferences.md` の Allowed Libraries 外）
+  - **更新**: `com.unity.inputsystem 1.12.0 → 1.14.2`（1.12.0 が Unity 6.3 で削除された `BuildTarget.ReservedCFE` を参照していたため）
+
+### Fixed
+
+- **`tools/ci/unity-compile-check.sh` mktemp テンプレート** — `.XXXXXX.log` サフィックスが macOS BSD `mktemp` の「File exists」エラーを引き起こしていた（X 群がベース名末尾になければならない仕様）。`.log` サフィックスを削除（trap によるクリーンアップは継続）。
+- **`tools/ci/unity-compile-check.sh` trap quoting** — `trap "rm -f '$COMPILE_LOG'"` から `trap 'rm -f "$COMPILE_LOG"' EXIT` に変更（pre-landing review 指摘、defensive 改善）。
+
+### Documented (deferred to future iterations)
+
+- `/release-checklist` / `/launch-checklist` / `/smoke-check` への compile-check 追加（Tier 1 PR1 着手時に再検討）
+- CI YAML（`.github/workflows/`）/ git pre-commit hook（Pro license 取得 or Tier 1 完了後）
+- Linux パス autodetect（Linux dev 参加時）
+- Custom EditorScript with `EditorUtility.scriptCompilationFailed`（必要性が出てから）
+
+### Reviews
+
+- `/autoplan` Phase 1 CEO + Phase 3 Eng + Phase 3.5 DX subagent voices（Codex 認証 revoke のため subagent-only）。CEO subagent クリティカル指摘で当初 5 skill 更新計画を 2 skill に縮小。Eng/DX 13 findings 全 auto-fix。
+- `/ship` Step 9 pre-landing review: 0 critical, 7 informational, 2 auto-fix 適用。
+- `/ship` Step 11 adversarial review: Claude subagent 13 findings（informational class、ship-blocking なし、PR body に明記）。
+
 ## [0.0.1.0] - 2026-04-29
 
 ### Added
