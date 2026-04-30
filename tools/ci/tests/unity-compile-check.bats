@@ -12,7 +12,7 @@ setup() {
     # Each test runs in an isolated temp project root
     TEST_PROJ="$(mktemp -d "${TMPDIR:-/tmp}/unity-compile-check-test.XXXXXX")"
     mkdir -p "$TEST_PROJ/ProjectSettings" "$TEST_PROJ/tools/ci"
-    # Symlink the script under test into the temp project so its $PROJECT_ROOT
+    # Copy the script under test into the temp project so its $PROJECT_ROOT
     # auto-resolves to the test directory (script uses $SCRIPT_DIR/../..)
     cp "$SCRIPT" "$TEST_PROJ/tools/ci/unity-compile-check.sh"
 }

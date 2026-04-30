@@ -58,7 +58,9 @@ fi
 # Cross-platform mktemp (BSD vs GNU compatibility)
 # Note: macOS BSD mktemp requires X's at end of basename — no suffix after XXXXXX
 COMPILE_LOG="$(mktemp "${TMPDIR:-/tmp}/unity-compile-check.XXXXXX")"
-trap "rm -f '$COMPILE_LOG'" EXIT  # Always cleanup, even on failure
+# Defensive: single-quote outer + double-quote inner so paths with spaces/quotes
+# survive (mktemp won't produce them, but trap text is parsed as a command)
+trap 'rm -f "$COMPILE_LOG"' EXIT
 
 echo "Running Unity compile check (version: $UNITY_VERSION)..."
 echo "Project: $PROJECT_ROOT"
