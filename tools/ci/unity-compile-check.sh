@@ -56,7 +56,8 @@ if [ -f "$PROJECT_ROOT/Library/Locks/Packages.lock" ] || \
 fi
 
 # Cross-platform mktemp (BSD vs GNU compatibility)
-COMPILE_LOG="$(mktemp "${TMPDIR:-/tmp}/unity-compile-check.XXXXXX.log")"
+# Note: macOS BSD mktemp requires X's at end of basename — no suffix after XXXXXX
+COMPILE_LOG="$(mktemp "${TMPDIR:-/tmp}/unity-compile-check.XXXXXX")"
 trap "rm -f '$COMPILE_LOG'" EXIT  # Always cleanup, even on failure
 
 echo "Running Unity compile check (version: $UNITY_VERSION)..."
