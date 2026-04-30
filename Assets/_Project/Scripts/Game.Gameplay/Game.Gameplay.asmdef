@@ -1,0 +1,20 @@
+{
+    "name": "Game.Gameplay",
+    "rootNamespace": "Game.Gameplay",
+    "references": [
+        "Game.Core",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.2D.Animation.Runtime",
+        "Unity.2D.SpriteShape.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

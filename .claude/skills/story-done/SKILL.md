@@ -72,6 +72,15 @@ Also read:
 
 ## Phase 3: Verify Acceptance Criteria
 
+### Compile Verification
+
+Before evaluating acceptance criteria against the implementation, verify the project compiles cleanly:
+
+- [ ] **Compile Check**: Run `bash tools/ci/unity-compile-check.sh` from project root, verify exit code 0
+- [ ] If compile fails, mark the story as **BLOCKED**, capture the error log path, and do not proceed with criterion evaluation
+
+### Criterion Evaluation
+
 For each acceptance criterion in the story, attempt verification using one of
 three methods:
 

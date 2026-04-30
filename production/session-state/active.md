@@ -1,9 +1,40 @@
 # Active Session State
 
-**Last Updated**: 2026-04-29
-**Branch**: feature/amazing-wozniak-5cc2d1
+**Last Updated**: 2026-04-30
+**Branch**: feature/affectionate-mirzakhani-c442d2
 
 ## Current Task
+
+**Skill**: `/setup-engine unity` → Unity プロジェクト本体初期化 — **完了**
+**Status**: Unity 6.3 LTS (6000.3.13f1) `com.unity.template.2d-cross-platform-2d-6.1.2` テンプレートを worktree ルートに展開済。`Assets/`、`Packages/`、`ProjectSettings/`（22 ファイル + ProjectVersion.txt）生成済。Asmdef 5 件（Game.Core / Game.Gameplay / Game.Editor / Game.Tests.EditMode / Game.Tests.PlayMode）と `Assets/_Project/{Scripts,Art,Audio,Prefabs}/` + `Assets/ThirdParty/` placeholder 作成済。`.claude/docs/directory-structure.md` を Unity レイアウトに更新済。
+**Mode**: auto（パッケージ追加導入は Editor 経由でユーザ手動）
+
+### 初期化サマリ
+- **Engine**: Unity 6000.3.13f1（ローカルインストール済、`/Applications/Unity/Hub/Editor/6000.3.13f1/`）
+- **Template**: Universal 2D Cross-Platform 6.1.2（URP 2D / Input System 1.12.0 / 2D Animation 10.1.4 / Test Framework 1.4.5 同梱）
+- **未導入パッケージ**（Editor で追加予定）: `com.unity.cinemachine`（ADR-0006）/ `com.unity.addressables`（ADR-0003, 0004）/ `com.unity.nuget.newtonsoft-json`（ADR-0004）
+- **Asmdef 階層**: `Game.Core` ← `Game.Gameplay` ← `Game.Editor`（全て `autoReferenced: false`）+ Test 2 件（`UNITY_INCLUDE_TESTS` constraint）
+- **`src/` 扱い**: 削除権限が拒否されたため placeholder のまま残置。directory-structure.md で **DEPRECATED** 明記、新規コードは `Assets/_Project/Scripts/` へ誘導
+
+### 次の推奨アクション
+1. **Unity Hub からプロジェクトを開く** → 初回インポート（Library/ 生成、約 5-15 分）
+2. Editor で Window → Package Manager → 上記未導入パッケージ 3 件を追加
+3. ADR-0001 R5 spike の本体プロジェクトへの統合（現在 `prototypes/r5-class-switch-spike/` に独立配置）
+4. 初回 commit: `chore(unity): initialize Unity 6.3 LTS Universal 2D project skeleton`
+
+### Compile-check 整備（2026-04-30、/autoplan 完了）
+
+**Skill**: ユーザ指示「any related pipeline に compile-check ステップを追加」→ /autoplan で 4-phase review 完了
+**Status**: tools/ci/unity-compile-check.sh + tools/ci/README.md + /gate-check 4 箇所 + /story-done Phase 3 + directory-structure.md 更新済。CEO subagent クリティカル指摘で当初 5→2 skill に縮小。Eng/DX subagent の HIGH/MEDIUM 13 件 auto-fix で script 強化（path traversal 対策、Library/ lock 検出、cross-platform mktemp 等）。
+
+**Outstanding（deferred、将来再検討）**:
+- /release-checklist, /launch-checklist, /smoke-check への compile-check 追加 → Tier 1 PR1 着手時
+- CI YAML（.github/workflows/）/ git pre-commit hook → Pro license 取得 or Tier 1 完了後
+- Linux パス autodetect → Linux dev 参加時
+- Custom EditorScript with `EditorUtility.scriptCompilationFailed` → 必要性が出てから
+- coding-standards.md CI/CD Rules セクション更新 → skill 安定後
+
+### 持ち越し（前セッション）— ADR-0009 Combat System
 
 **Skill**: `/architecture-decision combat-system` → **完了（ADR-0009）**
 **Status**: ADR-0009 Combat System を Proposed (Validation Gate: CS0-CS5) で書込済。unity-specialist + TD-ADR dual review 完了後、全修正適用済。ADR-0008 GDD sync（integration example 修正）完了。registry 6 件追記 + motor_intent_command consumers 更新。

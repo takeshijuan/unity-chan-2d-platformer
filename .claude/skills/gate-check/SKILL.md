@@ -133,6 +133,7 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] ADRs that touch post-cutoff engine APIs are flagged with Knowledge Risk: HIGH/MEDIUM
 - [ ] `/architecture-review` engine audit shows no deprecated API usage
 - [ ] All ADRs agree on the same engine version (no stale version references)
+- [ ] **Compile Check**: Run `bash tools/ci/unity-compile-check.sh` from project root, verify exit code 0. If fails, the gate is BLOCKED until compile errors are resolved.
 
 ---
 
@@ -173,6 +174,7 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] Manual validation confirms GDDs + architecture + epics are coherent
       (run `/review-all-gdds` and `/architecture-review` if not done recently)
 - [ ] **Core fantasy is delivered** — at least one playtester independently described an experience that matches the Player Fantasy section of the core system GDDs (without being prompted).
+- [ ] **Compile Check**: Run `bash tools/ci/unity-compile-check.sh` from project root, verify exit code 0. If fails, the gate is BLOCKED until compile errors are resolved.
 
 **Vertical Slice Validation** (FAIL if any item is NO):
 - [ ] A human has played through the core loop without developer guidance
@@ -202,6 +204,7 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] Fun hypothesis from Game Concept has been explicitly validated or revised
 
 **Quality Checks:**
+- [ ] **Compile Check**: Run `bash tools/ci/unity-compile-check.sh` from project root, verify exit code 0. If fails, the gate is BLOCKED until compile errors are resolved.
 - [ ] Tests are passing (run test suite via Bash)
 - [ ] No critical/blocker bugs in any bug tracker or known issues
 - [ ] Core loop plays as designed (compare to GDD acceptance criteria)
@@ -224,6 +227,7 @@ A depends on B). If any cycle is detected (e.g. A→B→A, or A→B→C→A):
 - [ ] QA test plan exists (`/qa-plan` output in `production/qa/`)
 - [ ] QA sign-off report exists (`/team-qa` output — APPROVED or APPROVED WITH CONDITIONS)
 - [ ] All Must Have story test evidence is present (Logic/Integration: test files pass; Visual/Feel/UI: sign-off docs in `production/qa/evidence/`)
+- [ ] **Compile Check**: Run `bash tools/ci/unity-compile-check.sh` from project root, verify exit code 0. If fails, the gate is BLOCKED until compile errors are resolved.
 - [ ] Smoke check passes cleanly (PASS verdict) on the release candidate build
 - [ ] No test regressions from previous sprint (test suite passes fully)
 - [ ] Balance data has been reviewed (`/balance-check` run)
