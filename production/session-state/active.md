@@ -1,9 +1,57 @@
 # Active Session State
 
 **Last Updated**: 2026-04-30
-**Branch**: feature/affectionate-mirzakhani-c442d2
+**Branch**: feature/zen-dirac-0fab62
 
 ## Current Task
+
+**Skill**: `/prototype camera-cinemachine3-r1-spike` → **C0 PASS (18/18) 完了 + ADR-0006 Accepted 昇格 + ADR-0006a 起草 + engine-reference 反映**
+**Status**: R1 Camera Cinemachine 3 Spike フル完了:
+- ✅ プロトタイプファイル 4 件作成 (autoplan Phase 1-4 承認、CD-PLAYTEST CONCERNS 3 件 accepted)
+- ✅ origin/main fast-forward merge: Unity 6.3 LTS (6000.3.13f1) プロジェクト本体 + compile-check pipeline
+- ✅ `com.unity.cinemachine` 3.1.6 インストール
+- ✅ `R1CinemachineSpike.cs` を `Assets/_R1Spike/Scripts/` に配置
+- ✅ `Assets/_R1Spike/Scenes/R1CameraSpike.unity` 作成 + シーン修正 3 件 (R1CinemachineSpike attach + Inspector assign / PolygonCollider2D 拡大 / IsTrigger=true)
+- ✅ Phase A (API Check): **10/10 OK** (Window → R1 Spike → Cinemachine 3 API Check)
+- ✅ Phase B (Runtime): stutterFrames=0/120, maxFollowDelta=0.0000, PASS=True
+- ✅ **C0 gate 18/18 PASS**: Critical 3 件 (#8 functional / #9 PASS / #11 PASS) + Standard 9 件 OK
+- ✅ Evidence file 完全記入: `production/qa/evidence/r1-camera-cinemachine3-spike-result.md`
+- ✅ **ADR-0006 Status 昇格**: Proposed (Provisional) → **Accepted (Provisional, C0 PASS 2026-04-30)**
+- ✅ **ADR-0006a 起草**: Camera System R1 Findings — API 命名 5 件 / PixelPerfect 採用方針 / Brain UpdateMethod 確定 / C1 protocol 拡張 (CD CONCERN A/B/C 反映) / D2 Look Ahead と Pillar 2 接続
+- ✅ engine-reference/unity/plugins/cinemachine.md に **R1 Spike Findings (2026-04-30)** セクション追記
+- ✅ engine-reference/unity/deprecated-apis.md の Cinemachine 旧 API 表を **要 Editor 確認** → **R1 確定** に更新（9 件 mapping）
+- ✅ docs/registry/architecture.yaml 追記: api_decisions 8 件 + forbidden_patterns 3 件
+- ✅ technical-preferences.md ADR Log: ADR-0006 status 注記 + ADR-0006a 追加
+- ⏳ **次の候補**: (a) ADR-0002 V1 spike → C1 検証、(b) `/architecture-review` で coverage 再測定、(c) GDD 執筆 (camera-system / class-abilities-system)
+**Review Mode**: full
+
+### R1 spike 主な発見
+- **#8 CinemachinePixelPerfect は functional** — declaredMethods=3 で empty stub ではなかった (事前検証 MEDIUM の誤り、Plan B 不要)
+- **#7 UseSignalSpaceOnly → UseCameraSpace** RENAMED 確定
+- **#5 BoundingShape2D は field** (property ではない)
+- **#11 CinemachineBrain に `[DefaultExecutionOrder]` 属性なし** — CM3 は UpdateMethod enum + ExecuteAlways で timing 制御
+- **Phase B 限界**: FollowTarget 静止での static 検証のみ。動的検証は C1 scope (ADR-0002 V1 後)
+
+### R1 Spike ファイルセット
+- `prototypes/camera-cinemachine3-r1-spike/README.md` — 目的・セットアップ・Plan B・制限事項
+- `prototypes/camera-cinemachine3-r1-spike/Scripts/R1CinemachineSpike.cs` — EditorWindow (reflection API checks #1-8,#10,#12) + MonoBehaviour (runtime #9,#11)
+- `prototypes/camera-cinemachine3-r1-spike/REPORT.md` — プロトタイプレポート (PROCEED conditional)
+- `production/qa/evidence/r1-camera-cinemachine3-spike-result.md` — エビデンステンプレート
+
+### autoplan レビュー結果
+- **Approach B (Lean 3-file spike)** 採択（元 7-file → 3-file にスコープ削減）
+- 16 件の eng auto-decision 適用済み（FindFirstObjectByType, _done flag fix, pipe escaping 等）
+- 重み付けスコアリング: Critical (#8,#9,#11) = 3pt, Standard = 1pt, C0 PASS = 14/18+
+- CD CONCERNS: (A) Plan B ピクセルスナップ・ジッター確認、(B) D2 Look Ahead と Pillar 2 接続、(C) #9 stutter のプレイヤー体験基準
+
+### 次の推奨タスク
+- **Editor 検証**: README セットアップ手順に従い、Unity 6.3 LTS Editor で R1 spike 実行
+  - Unity Editor 本体は origin/main 取込で `Assets/` / `Packages/` / `ProjectSettings/` 揃い済（Unity 6000.3.13f1 with URP 2D template）
+  - Cinemachine 3.x パッケージは Editor の Package Manager で追加要（未導入）
+- **C0 gate 判定**: 14/18+ かつ Critical 全 FAIL でなければ PASS → ADR-0006 Accepted 昇格
+- **Post-spike**: ADR-0006 RENAMED 反映、engine-reference cinemachine.md 追記
+
+### 持ち越し（main から取込）— Unity プロジェクト本体初期化
 
 **Skill**: `/setup-engine unity` → Unity プロジェクト本体初期化 — **完了**
 **Status**: Unity 6.3 LTS (6000.3.13f1) `com.unity.template.2d-cross-platform-2d-6.1.2` テンプレートを worktree ルートに展開済。`Assets/`、`Packages/`、`ProjectSettings/`（22 ファイル + ProjectVersion.txt）生成済。Asmdef 5 件（Game.Core / Game.Gameplay / Game.Editor / Game.Tests.EditMode / Game.Tests.PlayMode）と `Assets/_Project/{Scripts,Art,Audio,Prefabs}/` + `Assets/ThirdParty/` placeholder 作成済。`.claude/docs/directory-structure.md` を Unity レイアウトに更新済。

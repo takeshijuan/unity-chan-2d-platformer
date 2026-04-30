@@ -95,7 +95,8 @@
 - [ADR-0003](docs/architecture/adr-0003-vfx-system-boundary.md): VFXシステム境界
 - [ADR-0004](docs/architecture/adr-0004-save-data-system.md): セーブシステム（Newtonsoft.Json + schemaVersion + Steam Cloud）
 - [ADR-0005](docs/architecture/adr-0005-input-system-architecture.md): Input System アーキテクチャ
-- [ADR-0006](docs/architecture/adr-0006-camera-system.md): カメラシステム（Cinemachine 3 + 2D Confiner）
+- [ADR-0006](docs/architecture/adr-0006-camera-system.md): カメラシステム（Cinemachine 3 + 2D Confiner、Accepted Provisional / C0 PASS 2026-04-30）
+- [ADR-0006a](docs/architecture/adr-0006a-camera-system-r1-findings.md): Camera System R1 Findings（Cinemachine 3 API 命名確定 + PixelPerfect 採用方針 + C1 protocol 拡張）
 - [ADR-0007](docs/architecture/adr-0007-combo-input-buffer.md): Combo Input Buffer（Ring Buffer + IComboBuffer + ScriptableObject Window）
 - [ADR-0008](docs/architecture/adr-0008-class-abilities-system.md): Class Abilities System（ClassAbilityData + AbilityContext + HitConfirmed event）
 - [ADR-0009](docs/architecture/adr-0009-combat-system.md): Combat System（HitConfirmed → IDamageReceiver Thin Mediator）

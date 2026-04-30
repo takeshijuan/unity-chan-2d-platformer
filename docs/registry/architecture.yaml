@@ -1072,6 +1072,106 @@ api_decisions:
     added: 2026-04-29
     revised: ""
 
+  # ─── ADR-0006a: Camera System R1 Findings (2026-04-30) ───
+  # R1 spike (Cinemachine 3.1.6 + URP 17.0.3 in Unity 6.3 LTS 6000.3.13f1) で empirical 確定。
+  # 詳細は docs/engine-reference/unity/plugins/cinemachine.md "R1 Spike Findings" セクション。
+
+  - purpose: cinemachine_camera_class
+    status: active
+    api: "Unity.Cinemachine.CinemachineCamera (sealed class)"
+    not: "Cinemachine.CinemachineVirtualCamera（2.x 旧 namespace + 旧クラス名、3.x で削除）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "Cinemachine 3.1.6 で namespace が `Unity.Cinemachine` に統一、`CinemachineVirtualCamera` は `CinemachineCamera` に rename + sealed 化。R1 #1 で Editor reflection 確定。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: cinemachine_brain_update_method
+    status: active
+    api: "CinemachineBrain.UpdateMethod (public field, NOT property), enum UpdateMethods { FixedUpdate=0, LateUpdate=1, SmartUpdate=2, ManualUpdate=3 }, default = SmartUpdate"
+    not: "GetProperty(\"UpdateMethod\")（null を返す） / m_UpdateMethod private serialized field 直接アクセス（Cinemachine 2.x パターン）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "Cinemachine 3 では UpdateMethod が public field として公開。Reflection 取得は GetField のみ。R1 #2 で確定、scene YAML default=2 (SmartUpdate)。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: cinemachine_position_composer
+    status: active
+    api: "Unity.Cinemachine.CinemachinePositionComposer (Body component for CinemachineCamera)"
+    not: "CinemachineFramingTransposer（Cinemachine 2.x 旧 Body component 名、3.x で改名）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "Cinemachine 3 で Body component 体系が改訂、`FramingTransposer` → `PositionComposer` rename。R1 #4 で Editor reflection 確定。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: cinemachine_confiner2d_bounding_shape
+    status: active
+    api: "CinemachineConfiner2D.BoundingShape2D (public field, type Collider2D, NOT property) + CinemachineConfiner2D.InvalidateBoundingShapeCache() (parameterless method)"
+    not: "GetProperty(\"BoundingShape2D\") / m_BoundingShape2D private serialized field / InvalidateCache()（旧 2.x method 名）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "Cinemachine 3 で BoundingShape2D が public field 公開、direct assign 可。Cache invalidation method は `InvalidateBoundingShapeCache()` (parameterless)。R1 #5 で Editor reflection 確定。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: cinemachine_impulse_listener_use_camera_space
+    status: active
+    api: "CinemachineImpulseListener.UseCameraSpace (bool property)"
+    not: "CinemachineImpulseListener.UseSignalSpaceOnly（Cinemachine 2.x 旧 property 名、3.x で削除済）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "Cinemachine 3 で `UseSignalSpaceOnly` から `UseCameraSpace` に RENAMED。R1 #7 で `members.Contains(\"UseSignalSpaceOnly\") = False` を確認、3.x では完全削除。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: cinemachine_pixel_perfect_extension
+    status: active
+    api: "Unity.Cinemachine.CinemachinePixelPerfect (functional, declaredMethods=3) — gameObject.AddComponent<CinemachinePixelPerfect>() で追加 or 既存 prefab に手動ドラッグ"
+    not: "Inspector \"Add Component\" メニューから手動追加を期待する設計（[AddComponentMenu(\"\")] で隠蔽されているためメニューに出ない）/ PixelPerfectCamera 単体運用 Plan B（functional と確認済のため不要）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "ADR-0006 起草時の Context7 事前検証 (MEDIUM \"empty stub\") は誤り。R1 #8 で `declaredMethods=3` を確認、functional。`[AddComponentMenu(\"\")]` で Inspector \"Add Component\" メニューから隠蔽されているのみ。コード/プレハブ経由で正常に追加可能。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: pixel_perfect_camera_ref_resolution
+    status: active
+    api: "UnityEngine.U2D.PixelPerfectCamera.refResolutionX / refResolutionY (int properties)"
+    not: "UnityEngine.Experimental.Rendering.Universal.PixelPerfectCamera.referenceResolutionX/Y（旧 com.unity.2d.pixel-perfect 別 package 命名、URP 17.0.3 bundled 版では不在）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "URP 17.0.3 同梱 PixelPerfectCamera は `refResolutionX/Y` 命名、`referenceResolutionX/Y` ではない。R1 #10 で Editor reflection 確定、Crop Frame は enum `CropFrame { None / Pillarbox / Letterbox / Windowbox / StretchFill }`。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
+  - purpose: cinemachine_brain_output_camera
+    status: active
+    api: "CinemachineBrain.OutputCamera (Camera property)"
+    not: "Camera.main 経由（毎フレーム検索コスト）/ CinemachineBrain.transform 直接読み（actual camera transform は OutputCamera 経由）"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    reason: "Telemetry / observability で actual camera transform を取得する場合は `brain.OutputCamera.transform` 経由。R1 #12 で property 確定 (`Camera` 型)。"
+    referenced_by:
+      - docs/architecture/adr-0006-camera-system.md
+      - docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+    revised: ""
+
 # Example:
 #
 # api_decisions:
@@ -1296,6 +1396,29 @@ forbidden_patterns:
     why: "hitstop_attacker_delivery api_decision: CombatSystem が唯一の ApplyHitstop 呼出し元として確定（ADR-0009 Thin Mediator 決定）。VFX / Audio subscriber が独立に ApplyHitstop を呼ぶと、同 motor への複数呼出しが ADR-0002 Mathf.Max で意図せず長い hitstop を生む。デバッグが困難な hit feel 劣化につながる。"
     adr: docs/architecture/adr-0009-combat-system.md
     added: 2026-04-29
+
+  # ─── ADR-0006a: Camera System R1 Findings (2026-04-30) ───
+
+  - pattern: cinemachine_use_signal_space_only_property_reference
+    status: active
+    description: "CinemachineImpulseListener.UseSignalSpaceOnly プロパティへの参照（取得・代入・reflection）を行ってはいけない。Cinemachine 3.x では UseCameraSpace に RENAMED 済、旧プロパティは削除されている。**重要**: rename は機械的な置換ではない — `UseSignalSpaceOnly=true` (2.x) と `UseCameraSpace=true` (3.x) は意味が同等とは限らない（反転している可能性あり）。Camera shake routing 移植時は意図を再評価して手動移植すること、`UseSignalSpaceOnly` → `UseCameraSpace` の機械的 sed/IDE-rename は**禁止**。"
+    why: "ADR-0006a Decision 1 で API 命名確定。旧名参照はコンパイルエラー or reflection null 返却を生み、camera shake routing が silent fail する。R1 #7 で `members.Contains(\"UseSignalSpaceOnly\") = False` を実機確認、互換 shim も提供されていない。意味的同等性は R1 で empirical 検証していない（property 存在のみ確認）。"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+
+  - pattern: cinemachine_pixel_perfect_inspector_menu_expectation
+    status: active
+    description: "CinemachinePixelPerfect コンポーネントを Inspector の \"Add Component\" メニューから手動追加することを期待した設計 / セットアップ手順 / ドキュメントを書いてはいけない。コード経由 (gameObject.AddComponent<CinemachinePixelPerfect>()) または既存 prefab に手動ドラッグして prefab 化する経路のみ使用すること。"
+    why: "ADR-0006a Decision 2 で確定。Cinemachine 3.1.6 の `CinemachinePixelPerfect` には `[AddComponentMenu(\"\")]` (空文字列) が付与されており、Inspector \"Add Component\" メニューから探しても **見つからない**。R1 #8 で確認。新規メンバー / 外注ドキュメントが「メニューに無い → 採用不能」と誤判断するリスクを排除するため、設計時点で運用方針を固定する。"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
+
+  - pattern: cinemachine_brain_default_execution_order_attribute_assumption
+    status: active
+    description: "CinemachineBrain が `[DefaultExecutionOrder(N)]` 属性で execution order を固定していると仮定したコード / レビュー / 設計を書いてはいけない。Cinemachine 3 の Brain は属性ベースの順序固定を **使用していない**、UpdateMethod enum (default SmartUpdate) + `[ExecuteAlways]` で timing を制御する。"
+    why: "ADR-0006a Decision 3 で確定。R1 #11 で `brainType.GetCustomAttributes(typeof(DefaultExecutionOrder), true).Length == 0` を実機確認。属性ベースの順序を仮定して `Script Execution Order` を設定しても効果がない（Brain は UpdateMethod で動作）。`[DefaultExecutionOrder(-100)]` などを Brain 経由で参照するコードは仕様誤認の signal。"
+    adr: docs/architecture/adr-0006a-camera-system-r1-findings.md
+    added: 2026-04-30
 
 # Example:
 #

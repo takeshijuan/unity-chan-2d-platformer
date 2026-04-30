@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.0.3.0] - 2026-04-30
+
+### Added
+
+- **ADR-0006 Camera System を Accepted (Provisional) に昇格** — C0 validation gate (R1 spike) を Unity 6.3 LTS (6000.3.13f1) + Cinemachine 3.1.6 + URP 17.0.3 で完全通過、weighted score **18/18**（Critical 3 件 #8/#9/#11 すべて PASS）。ADR-0006 Status を `Provisional, C0-C1 pending` から `Accepted (Provisional, C0 PASS 2026-04-30 / C1 — pending ADR-0002 V1)` に変更。
+- **ADR-0006a Camera System R1 Findings 起草** — empirical R1 spike findings を反映する follow-up ADR。Decision 1 (API 命名 10 件確定) / Decision 2 (CinemachinePixelPerfect 採用方針 — functional 確認、コード/プレハブ追加経路) / Decision 3 (UpdateMethod = SmartUpdate default lock) / Decision 4 (C1 protocol を 4 段階 A/B/C/D に拡張) / Decision 5 (D2 Look Ahead と Pillar 2 Design Test 接続)。CD-PLAYTEST gate CONCERNS A/B/C 全反映。
+- **R1 Camera Cinemachine 3 Spike** — `prototypes/camera-cinemachine3-r1-spike/`（README + Scripts + REPORT、throw-away prototype）と `Assets/_R1Spike/`（Unity 配置: scene + Editor reflection checker + runtime MonoBehaviour）を新規追加。`R1CinemachineSpike.cs` は EditorWindow 経由で Cinemachine 3 reflection API checks 10 項目（Play Mode 不要）+ MonoBehaviour で runtime stutter / execution order 検証 2 項目（120 フレーム計測）を統合。Editor 検証完了、evidence は `production/qa/evidence/r1-camera-cinemachine3-spike-result.md` に保管。
+- **Engine reference: Cinemachine 3 empirical findings** — `docs/engine-reference/unity/plugins/cinemachine.md` に **R1 Spike Findings (2026-04-30)** セクション追加。Cinemachine 2.x → 3.x mapping 表（10 API）、`GenerateImpulse` 7 overloads 一覧、`UpdateMethod` enum 値、`CinemachinePixelPerfect` 隠蔽運用、`PixelPerfectCamera` プロパティ全列挙。**`UseSignalSpaceOnly` → `UseCameraSpace` の意味的同等性は未検証** — 機械的 rename 禁止の caveat を明記。
+- **Engine reference: Cinemachine 2.x deprecation table** — `docs/engine-reference/unity/deprecated-apis.md` に Cinemachine セクションを R1 確定形に更新。9 件の 2.x → 3.x mapping、CinemachinePixelPerfect 隠蔽運用注記、URP bundled `refResolutionX/Y` 命名差異。
+- **Architecture registry append** — `docs/registry/architecture.yaml` に api_decisions 8 件（cinemachine_camera_class / brain_update_method / position_composer / confiner2d_bounding_shape / impulse_listener_use_camera_space / pixel_perfect_extension / pixel_perfect_camera_ref_resolution / brain_output_camera）+ forbidden_patterns 3 件（use_signal_space_only_property_reference / pixel_perfect_inspector_menu_expectation / brain_default_execution_order_attribute_assumption）追記。
+
+### Changed
+
+- **`technical-preferences.md` ADR Log** — ADR-0006 に `Accepted Provisional / C0 PASS 2026-04-30` 注記、ADR-0006a を新規エントリ追加。
+
 ## [0.0.2.0] - 2026-04-30
 
 ### Added
