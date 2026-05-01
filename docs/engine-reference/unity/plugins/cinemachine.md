@@ -346,3 +346,123 @@ vcam.Follow = target; // Cleaner API
 ## Sources
 - https://docs.unity3d.com/Packages/com.unity.cinemachine@3.0/manual/index.html
 - https://learn.unity.com/tutorial/cinemachine
+
+---
+
+## R1 Spike Findings (2026-04-30)
+
+> **Source**: ADR-0006 R1 spike Editor verification (Unity 6.3 LTS 6000.3.13f1 + Cinemachine 3.1.6 + URP 17.0.3) で確定した API 命名 / 公開形式。
+> Evidence: [`production/qa/evidence/r1-camera-cinemachine3-spike-result.md`](../../../../production/qa/evidence/r1-camera-cinemachine3-spike-result.md)
+> ADR: [ADR-0006a Camera System R1 Findings](../../../architecture/adr-0006a-camera-system-r1-findings.md)
+
+### Cinemachine 3 vs 2.x — Namespace + 命名 mapping
+
+| Cinemachine 2.x | Cinemachine 3.x (確定) | 公開形式 | Notes |
+|-----------------|------------------------|----------|-------|
+| `Cinemachine.CinemachineVirtualCamera` | `Unity.Cinemachine.CinemachineCamera` | sealed class | Namespace `Unity.Cinemachine` 必須 |
+| `Cinemachine.CinemachineBrain` | `Unity.Cinemachine.CinemachineBrain` | class | Same |
+| `CinemachineFramingTransposer` (Body) | `CinemachinePositionComposer` | class | Body component 改名 |
+| `CinemachineConfiner2D.m_BoundingShape2D` | `CinemachineConfiner2D.BoundingShape2D` | **field** (not property) | `Collider2D` 型、direct assign 可 |
+| `CinemachineConfiner2D.InvalidateCache()` | `CinemachineConfiner2D.InvalidateBoundingShapeCache()` | method | Parameterless |
+| `CinemachineImpulseSource.GenerateImpulse()` | 7 overloads | methods | 3 legacy + 3 new naming + 1 no-arg, see below |
+| `CinemachineImpulseListener.UseSignalSpaceOnly` | `CinemachineImpulseListener.UseCameraSpace` | property | **RENAMED** + **semantic NOT empirically equivalent** — `UseSignalSpaceOnly=true` (2.x) vs `UseCameraSpace=true` (3.x) likely have different (possibly inverted) meanings. **Do NOT mechanically rename**; treat as a manual port that requires re-evaluating intent against Cinemachine 3 ImpulseListener docs |
+| `CinemachineBrain.m_UpdateMethod` (private serialized) | `CinemachineBrain.UpdateMethod` | **field** (not property) | enum `UpdateMethods` |
+| `vcam.LookAt`, `vcam.Follow` (m_ prefixed in 2.x) | `cam.LookAt`, `cam.Follow` | properties | `Transform` type, no m_ prefix |
+| `CinemachineBrain.OutputCamera` | Same | property | `Camera` type |
+
+### CinemachineImpulseSource — 7 GenerateImpulse Overloads
+
+```csharp
+// New naming (Cinemachine 3 推奨)
+GenerateImpulseAt(Vector3 position, Vector3 velocity);
+GenerateImpulseWithVelocity(Vector3 velocity);
+GenerateImpulseWithForce(float force);
+
+// Legacy (deprecated shim, 期間限定)
+GenerateImpulse(Vector3 velocity);                      // → use GenerateImpulseWithVelocity
+GenerateImpulse(float force);                           // → use GenerateImpulseWithForce
+GenerateImpulseAtPositionWithVelocity(Vector3 pos, Vector3 vel);  // legacy alias
+
+// No-arg (uses DefaultVelocity from Inspector)
+GenerateImpulse();
+```
+
+**推奨**: Cinemachine 3 では `GenerateImpulseWithVelocity` / `GenerateImpulseWithForce` / `GenerateImpulseAt` の 3 つの new naming を使用。Legacy 3 overloads はマイグレーション完了後に warning 化される可能性あり。
+
+### CinemachineBrain.UpdateMethod — enum 値
+
+```csharp
+public enum UpdateMethods
+{
+    FixedUpdate = 0,
+    LateUpdate = 1,
+    SmartUpdate = 2,   // ← Cinemachine 3 default
+    ManualUpdate = 3
+}
+```
+
+- **Default**: `SmartUpdate` — physics object には FixedUpdate、static target には LateUpdate を自動選択
+- **Reflection 取得**: `field` 経由のみ。`brainType.GetField("UpdateMethod", BindingFlags.Public | BindingFlags.Instance)` で取得可能。`GetProperty` は **null** を返す
+- **`[DefaultExecutionOrder]` 属性**: `CinemachineBrain` には付与されていない。Execution timing は `UpdateMethod` enum + `[ExecuteAlways]` で制御
+
+### CinemachinePixelPerfect Extension
+
+| 項目 | 値 |
+|------|------|
+| クラス | `Unity.Cinemachine.CinemachinePixelPerfect` |
+| 状態 | **functional** (declaredMethods=3) |
+| `[AddComponentMenu("")]` | 付与（**Inspector "Add Component" メニューから隠蔽**） |
+| 推奨追加方法 | コード経由 `gameObject.AddComponent<CinemachinePixelPerfect>()` または既存 prefab に手動ドラッグ → prefab 化 |
+| Pixel Perfect Camera (URP bundled) との関係 | URP 17.0.3 同梱の `UnityEngine.U2D.PixelPerfectCamera` と組合せて使用 |
+
+> **Note**: ADR-0006 起草時の Context7 事前検証 (MEDIUM confidence "empty stub") は **誤り**。Plan B (PixelPerfectCamera 単体運用) は不要。詳細は [ADR-0006a Decision 2](../../../architecture/adr-0006a-camera-system-r1-findings.md#locked-decision-2--cinemachinepixelperfect-採用方針)。
+
+### CinemachineImpulseListener — Property 一覧
+
+R1 #7 で確認した Cinemachine 3.1.6 の `CinemachineImpulseListener` public members:
+
+```csharp
+public class CinemachineImpulseListener : ...
+{
+    public float Gain;                  // shake 強度倍率
+    public bool Use2DDistance;          // 2D distance attenuation
+    public int ChannelMask;             // ImpulseSource ChannelMask とマッチング
+    public bool UseCameraSpace;         // ★ RENAMED from `UseSignalSpaceOnly` (Cinemachine 2.x)
+    // ... (他の members)
+}
+```
+
+**Forbidden**: `UseSignalSpaceOnly` プロパティ参照 — 旧 Cinemachine 2.x 命名、3.x で削除済（R1 spike で `members.Contains("UseSignalSpaceOnly") = False` を確認）
+
+### URP 2D + Cinemachine 3 + PixelPerfectCamera 三者統合
+
+R1 #9 (Phase B static-state verification) の結果:
+- Brain + PixelPerfectCamera + UniversalRP 共存可能
+- 静止状態で stutterFrames=0/120
+- **動的検証は ADR-0006 C1 protocol scope (ADR-0002 V1 通過後)**
+
+### PixelPerfectCamera (URP bundled) — Property 一覧
+
+```csharp
+// UnityEngine.U2D.PixelPerfectCamera (URP 17.0.3 bundled)
+// 元 com.unity.2d.pixel-perfect package が URP に統合済
+public class PixelPerfectCamera : MonoBehaviour
+{
+    public CropFrame cropFrame;        // enum: None/Pillarbox/Letterbox/Windowbox/StretchFill
+    public GridSnapping gridSnapping;  // enum
+    public float orthographicSize;
+    public int assetsPPU;
+    public int refResolutionX;          // ★ refResolutionX/Y (NOT referenceResolutionX/Y)
+    public int refResolutionY;
+    public bool upscaleRT;
+    public bool pixelSnapping;
+    public bool cropFrameX;
+    public bool cropFrameY;
+    public bool stretchFill;
+    public int pixelRatio;
+    public bool requiresUpscalePass;
+    // ...
+}
+```
+
+**Forbidden**: `referenceResolutionX/Y` プロパティ参照（旧 com.unity.2d.pixel-perfect 命名の可能性、URP bundled 版では `refResolutionX/Y` のみ）

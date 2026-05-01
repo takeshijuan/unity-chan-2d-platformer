@@ -119,15 +119,31 @@ Format: **Don't use X** → **Use Y instead**
 | **URP Compatibility Mode** | RenderGraph API | Unity 6.3 で**完全削除**、`RenderGraphSettings.enableRenderCompatibilityMode` は読み取り専用 |
 | `CommandBuffer` ベースの旧 Custom RenderPass | `RasterRenderPass` / RenderGraph | Unity 6 から段階的移行、6.3 で完全必須化 |
 
-## Cinemachine (Unity 6.3 / Cinemachine 3.x)
+## Cinemachine (Unity 6.3 / Cinemachine 3.1.6) — R1 Spike 確定 (2026-04-30)
 
-| Deprecated | Replacement | Notes |
-|------------|-------------|-------|
-| `Cinemachine.CinemachineVirtualCamera` | `Unity.Cinemachine.CinemachineCamera` | Cinemachine 3.x で **rename + namespace 変更**。2.x 互換 shim は期間限定。新規プロジェクトは 3.x 系統のみ。`docs/architecture/adr-0006-camera-system.md` Locked Decision 1 で確定 |
-| `CinemachineFramingTransposer` (Body component) | **要 Editor 確認**（`PositionComposer` 候補、ADR-0006 R1 spike #4 で検証） | Cinemachine 3.x で Body component 体系が改訂、命名と機能差は 2.x と異なる可能性 |
-| Cinemachine 2.x 旧 `CinemachineBrain` API（`m_UpdateMethod` 等の private field アクセス） | Cinemachine 3.x `CinemachineBrain.UpdateMethod` 公開プロパティ | **要 Editor 確認**（既定値 LateUpdate / SmartUpdate / FixedUpdate / ManualUpdate のどれか、ADR-0006 R1 spike #2 で検証） |
+| Deprecated (2.x) | Replacement (3.x 確定) | Notes |
+|------------------|------------------------|-------|
+| `Cinemachine.CinemachineVirtualCamera` | `Unity.Cinemachine.CinemachineCamera` (sealed) | Namespace + rename。2.x 互換 shim は期間限定 |
+| `CinemachineFramingTransposer` (Body) | `CinemachinePositionComposer` | Body component 改名 (R1 #4 確定) |
+| `CinemachineBrain.m_UpdateMethod` 私有フィールド reflection 経路 | `CinemachineBrain.UpdateMethod` (**public field**, NOT property) | enum `UpdateMethods` { FixedUpdate=0, LateUpdate=1, SmartUpdate=2, ManualUpdate=3 }、default = SmartUpdate (R1 #2 公開フィールドを確定確認)。`m_UpdateMethod` は Unity の internal serialization 命名で、3.x で削除されたかは empirical 未確認 — **公開 API として参照しない**（あったとしても internal、shim 期待禁止） |
+| `CinemachineImpulseListener.UseSignalSpaceOnly` | `CinemachineImpulseListener.UseCameraSpace` | RENAMED (R1 #7 確定、`UseSignalSpaceOnly` は 3.x で削除済) |
+| `CinemachineConfiner2D.m_BoundingShape2D` (private) | `CinemachineConfiner2D.BoundingShape2D` (**public field**, NOT property) | `Collider2D` 型 (R1 #5 確定) |
+| `CinemachineConfiner2D.InvalidateCache()` | `CinemachineConfiner2D.InvalidateBoundingShapeCache()` | parameterless (R1 #5 確定) |
+| `vcam.m_Follow`, `vcam.m_LookAt` (m_ prefix) | `cam.Follow`, `cam.LookAt` (no prefix) | Property 化、`Transform` 型 (R1 #3 確定) |
+| `[DefaultExecutionOrder]` 属性 で CinemachineBrain order 固定 | UpdateMethod enum + `[ExecuteAlways]` で制御 | `CinemachineBrain` には DefaultExecutionOrder 属性が **付与されていない** (R1 #11 確定) |
+| `UnityEngine.Experimental.Rendering.Universal.PixelPerfectCamera.referenceResolutionX/Y` | `UnityEngine.U2D.PixelPerfectCamera.refResolutionX/Y` | URP 17.0.3 同梱、命名は `refResolutionX/Y` (NOT `referenceResolutionX/Y`、R1 #10 確定) |
 
-> **Cinemachine 3.x 移行注意**: ADR-0006 Camera System (provisional) で `com.unity.cinemachine` 3.x 系統採用が確定。LLM 訓練データは 2.x 主体のため、API 名 12 箇所は ADR-0006 R1 spike (`production/qa/evidence/r1-camera-cinemachine3-spike-result.md`) で実機検証してから follow-up ADR で具体仕様を lock。
+### 補足: CinemachinePixelPerfect Extension は隠蔽されている (functional)
+
+| 項目 | 値 |
+|------|------|
+| クラス | `Unity.Cinemachine.CinemachinePixelPerfect` (functional, declaredMethods=3) |
+| `[AddComponentMenu("")]` | 付与 — Inspector "Add Component" メニューから **隠蔽** |
+| 推奨追加方法 | コード経由 `gameObject.AddComponent<CinemachinePixelPerfect>()` または既存 prefab に手動ドラッグ |
+
+> **Forbidden**: Inspector "Add Component" メニューから `CinemachinePixelPerfect` を選ぶ運用に依存する設計。`/architecture-decision adr-0006a` Decision 2 で確定。
+
+> **Cinemachine 3.x 移行注意**: 上記の 2.x → 3.x mapping は ADR-0006 R1 spike (Unity 6.3 LTS 6000.3.13f1 + Cinemachine 3.1.6) で empirical 確定済。LLM 訓練データが 2.x 主体のため、コード生成時は本表を必ず参照すること。詳細仕様は [`docs/engine-reference/unity/plugins/cinemachine.md` の R1 Spike Findings セクション](plugins/cinemachine.md#r1-spike-findings-2026-04-30) と [ADR-0006a](../../architecture/adr-0006a-camera-system-r1-findings.md)。
 
 ---
 
